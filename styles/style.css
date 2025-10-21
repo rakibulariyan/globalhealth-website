@@ -1,0 +1,132 @@
+/* Healthcare Color Scheme */
+:root {
+    --primary: #2c7fb8;
+    --secondary: #7fcdbb;
+    --success: #28a745;
+    --info: #17a2b8;
+    --warning: #ffc107;
+    --danger: #dc3545;
+}
+
+/* Login Page Styling */
+.login-page {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+}
+
+.login-box {
+    width: 360px;
+    margin: 0 auto;
+}
+
+.login-logo {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: white;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Main App Styling */
+.hidden {
+    display: none !important;
+}
+
+.section {
+    display: none;
+}
+
+.section.active {
+    display: block;
+}
+
+/* Role-based visibility */
+.admin-only, .employee-admin, .accountant-only {
+    display: none;
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border: none;
+    border-radius: 10px;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+/* Healthcare Theme */
+.healthcare-primary {
+    background-color: var(--primary) !important;
+    color: white;
+}
+
+.sidebar-healthcare {
+    background: linear-gradient(180deg, var(--primary), var(--secondary));
+}
+
+/* Table Styling */
+.table-responsive {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Button Styling */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border: none;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, var(--primary), #1a5a8a);
+}
+
+/* User Photo Styles */
+.img-circle {
+    border-radius: 50% !important;
+}
+
+.dropdown-header {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    padding: 20px;
+}
+
+/* Form Styling */
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(44, 127, 184, 0.25);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .login-box {
+        width: 90%;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+}
+
+/* Print Styles for Membership Cards */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .member-card-print, .member-card-print * {
+        visibility: visible;
+    }
+    .member-card-print {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+}
