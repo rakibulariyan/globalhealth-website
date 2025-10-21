@@ -51,7 +51,7 @@ function setupEventListeners() {
     document.getElementById('sendResetLink').addEventListener('click', sendPasswordReset);
 }
 
-// SIMPLE DATABASE LOGIN (No Supabase Auth complications)
+// WORKING LOGIN FUNCTION - Uses Supabase Auth
 async function handleLogin(e) {
     e.preventDefault();
     
@@ -64,24 +64,62 @@ async function handleLogin(e) {
     }
     
     try {
-        console.log('Attempting login for:', email);
+        console.log('Attempting Supabase Auth login for:', email);
         
-        // Direct database authentication (bypass Supabase Auth)
-        const { data: employee, error } = await supabase
-            .from('employees')
-            .select('*')
-            .eq('email', email)
-            .eq('password', password)
-            .single();
-            
+        // Use Supabase Authentication
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+        
         if (error) {
-            console.error('Database error:', error);
+            console.error('Supabase Auth error:', error);
             throw new Error('Invalid login credentials');
         }
         
-        if (!employee) {
-            throw new Error('No employee found with these credentials');
+        if (!data.user) {
+            throw new Error('No user found');
         }
+        
+        console.log('Supabase Auth successful:', data.user);
+        
+        // Now get employee details from database
+        const { data: employee, error: empError } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('email', email)
+            .single();
+            
+        if (empError) {
+            console.warn('No employee record found, but auth successful');
+        }
+        
+        // Set user session
+        currentUser = {
+            id: data.user.id,
+            email: data.user.email,
+            name: employee?.name || 'User',
+            role: employee?.role || 'employee'
+        };
+        currentRole = employee?.role || 'employee';
+        
+        console.log('Login successful:', currentUser);
+        
+        // Update UI and show app
+        updateUIForRole();
+        showApp();
+        loadDashboardData();
+        
+    } catch (error) {
+        console.error('Login failed:', error);
+        alert('Login failed: ' + error.message);
+        
+        // Show helpful message
+        if (error.message.includes('Invalid login credentials')) {
+            alert('Please make sure:\n1. User exists in Supabase Authentication\n2. Email and password are correct\n3. User is confirmed');
+        }
+    }
+}
         
         // Set user session
         currentUser = {
