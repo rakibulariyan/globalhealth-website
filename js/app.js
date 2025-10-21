@@ -62,6 +62,23 @@ async function handleLogin(e) {
         alert('Please enter both email and password');
         return;
     }
+
+        // Temporary fallback admin login
+    if (email === "rakibulsc2@gmail.com" && password === "Rakib@202526") {
+      currentUser = {
+        id: "local-admin",
+        email: email,
+        name: "Rakibul Ariyan",
+        role: "admin"
+      };
+      currentRole = "admin";
+      console.log("Logged in as default admin");
+      updateUIForRole();
+      showApp();
+      loadDashboardData();
+      return;
+    }
+
     
     try {
         console.log('Attempting Supabase Auth login for:', email);
@@ -121,27 +138,6 @@ async function handleLogin(e) {
     }
 }
         
-        // Set user session
-        currentUser = {
-            id: employee.id,
-            email: employee.email,
-            name: employee.name,
-            role: employee.role
-        };
-        currentRole = employee.role;
-        
-        console.log('Login successful:', currentUser);
-        
-        // Update UI and show app
-        updateUIForRole();
-        showApp();
-        loadDashboardData();
-        
-    } catch (error) {
-        console.error('Login failed:', error);
-        alert('Login failed: ' + error.message);
-    }
-}
 
 // Update UI based on user role
 function updateUIForRole() {
