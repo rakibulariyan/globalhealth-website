@@ -667,11 +667,14 @@ async function loadMembers() {
 window.editMember = async function (id) {
   try {
     // Fetch the member data from Supabase
-    const { data, error } = await supabase
-      .from('members')
-      .select('*')
-      .eq('id', id)
-      .single();
+  const { data, error } = await supabase
+  .from('members')
+  .select('*')
+  .eq('id', parseInt(id))
+  .maybeSingle();
+
+console.log('Editing ID:', id, 'Fetched:', data, 'Error:', error);
+
 
     if (error) throw error;
 
