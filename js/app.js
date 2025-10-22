@@ -427,10 +427,105 @@ window.deleteEmployee = function(id) {
     }
 };
 
-// Basic member functions (to be expanded)
+// ---- Full Member Registration Implementation ----
+
 window.saveMember = async function() {
-    alert('Member registration would be implemented here');
+  try {
+    // Collect form values
+    const name = document.getElementById('memberName').value.trim();
+    const father = document.getElementById('memberFatherName').value.trim();
+    const age = parseInt(document.getElementById('memberAge').value, 10);
+    const gender = document.getElementById('memberGender').value;
+    const aadhar = document.getElementById('memberAadhar').value.trim();
+    const contact = document.getElementById('memberContact').value.trim();
+    const alternate = document.getElementById('memberAlternate').value.trim();
+    const clinical = document.getElementById('memberClinical').value.trim();
+    const district = document.getElementById('memberDistrict').value;
+    const state = document.getElementById('memberState').value;
+    const address = document.getElementById('memberAddress').value.trim();
+    const nominee = document.getElementById('memberNominee').value.trim();
+    const paymentReceived = document.getElementById('paymentReceived').checked;
+
+    // Basic validation
+    if (!name || !contact || !aadhar || !district || !address) {
+      alert('⚠️ Please fill all required fields (Name, Contact, Aadhaar, District, Address)');
+      return;
+    }
+
+    // Aadhaar photo upload (optional)
+    const aadharInput = document.getElementById('memberAadharPhoto');
+    let aadhar_url = null;
+
+    if (aadharInput && aadharInput.files.length > 0) {
+      const file = aadharInput.files[0];
+      const filePath = `aadhar-${Date.now()}-${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('aadhar-uploads')
+        .upload(filePath, file);
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrl } = supabase
+        .storage
+        .from('aadhar-uploads')
+        .getPublicUrl(filePath);
+      aadhar_url = publicUrl.publicUrl;
+    }
+
+    // Generate next member_id
+    const { data: last } = await supabase
+      .from('members')
+      .select('member_id')
+      .order('id', { ascending: false })
+      .limit(1);
+
+    let next = 101;
+    if (last && last.length > 0) {
+      const num = parseInt(last[0].member_id.replace(/\D/g, ''), 10);
+      if (!isNaN(num)) next = num + 1;
+    }
+    const memberId = 'GHM' + String(next).padStart(6, '0');
+
+    // Family members (will be empty for now until Part 3)
+    const family_members = window._familyMembersArray || [];
+
+    // Insert into members table
+    const { error } = await supabase
+      .from('members')
+      .insert([{
+        member_id: memberId,
+        name,
+        father_name: father,
+        age,
+        gender,
+        aadhar_number: aadhar,
+        contact_number: contact,
+        alternate_number: alternate,
+        clinical_history: clinical,
+        district,
+        state,
+        full_address: address,
+        nominee_name: nominee,
+        aadhar_photo_url: aadhar_url,
+        payment_received: paymentReceived,
+        family_members
+      }]);
+
+    if (error) throw error;
+
+    alert(`✅ Member registered successfully! ID: ${memberId}`);
+
+    // Reset and close form
+    document.getElementById('addMemberForm').reset();
+    $('#addMemberModal').modal('hide');
+
+    // Refresh list if function exists
+    if (typeof loadMembers === 'function') loadMembers();
+
+  } catch (err) {
+    alert('❌ Error registering member: ' + (err.message || err));
+  }
 };
+
 
 window.searchMembers = function() {
     const searchTerm = document.getElementById('memberSearch').value.toLowerCase();
