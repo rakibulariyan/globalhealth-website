@@ -619,10 +619,50 @@ window.searchMembers = function() {
     });
 };
 
-// Placeholder functions for other sections
+// === Load Members Table ===
 async function loadMembers() {
-    document.querySelector('#membersTable tbody').innerHTML = '<tr><td colspan="9" class="text-center text-muted">No members data loaded yet</td></tr>';
+  try {
+    const tbody = document.querySelector('#membersTable tbody');
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Loading...</td></tr>';
+
+    // ✅ Fetch all members
+    const { data: members, error } = await supabase
+      .from('members')
+      .select('*')
+      .order('id', { ascending: false });
+
+    if (error) throw error;
+
+    if (!members || members.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No members found</td></tr>';
+      return;
+    }
+
+    // ✅ Build rows
+    tbody.innerHTML = members.map(mem => `
+      <tr>
+        <td>${mem.member_id}</td>
+        <td>${mem.name}</td>
+        <td>${mem.father_name || ''}</td>
+        <td>${mem.age || ''}</td>
+        <td>${mem.gender || ''}</td>
+        <td>${mem.contact_number}</td>
+        <td>${mem.district}</td>
+        <td>${mem.status || 'active'}</td>
+        <td>
+          <button class="btn btn-sm btn-outline-primary" onclick="editMember('${mem.id}')"><i class="fas fa-edit"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="deleteMember('${mem.id}')"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>
+    `).join('');
+
+  } catch (err) {
+    console.error('Error loading members:', err);
+    document.querySelector('#membersTable tbody').innerHTML =
+      '<tr><td colspan="9" class="text-center text-danger">Error loading members</td></tr>';
+  }
 }
+
 
 async function loadPayments() {
     // Placeholder
