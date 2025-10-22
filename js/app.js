@@ -596,6 +596,23 @@ window.saveMember = async function() {
 
     alert(`✅ Member registered successfully! ID: ${memberId}`);
 
+    // ✅ Generate PDF after successful registration
+generateMemberPDF({
+  name,
+  member_id: memberId,
+  age,
+  gender,
+  aadhar_number: aadhar,
+  contact_number: contact,
+  district,
+  join_date: new Date(),
+  expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+  created_by: currentUser ? currentUser.name : "Admin",
+  aadhar_photo_url: aadhar_url
+});
+
+
+
     // Reset and close form
     document.getElementById('addMemberForm').reset();
     $('#addMemberModal').modal('hide');

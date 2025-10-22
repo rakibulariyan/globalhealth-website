@@ -1,58 +1,133 @@
-// PDF Generation Function
-function generateMemberPDF(memberData) {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    // Set card dimensions (PAN card size: 86x54 mm)
-    const cardWidth = 86;
-    const cardHeight = 54;
-    
-    // Add background
-    doc.setFillColor(44, 127, 184);
-    doc.rect(0, 0, cardWidth, 15, 'F');
-    
-    // Header
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Global Health Mission', cardWidth/2, 8, { align: 'center' });
-    
-    // Member photo area
-    doc.setDrawColor(200, 200, 200);
-    doc.setFillColor(240, 240, 240);
-    doc.rect(5, 18, 20, 25, 'FD');
-    doc.setTextColor(100, 100, 100);
-    doc.setFontSize(6);
-    doc.text('PHOTO', 15, 30, { align: 'center' });
-    
-    // Member details
-    doc.setTextColor(0, 0, 0);
-    doc.setFontSize(7);
-    
-    let yPos = 20;
-    doc.text('Name:', 28, yPos); yPos += 4;
-    doc.text('Member ID:', 28, yPos); yPos += 4;
-    doc.text("Father's Name:", 28, yPos); yPos += 4;
-    doc.text('Valid Until:', 28, yPos);
-    
-    doc.setFont('helvetica', 'normal');
-    yPos = 20;
-    doc.text(memberData.name, 45, yPos); yPos += 4;
-    doc.text(memberData.memberId, 45, yPos); yPos += 4;
-    doc.text(memberData.fatherName, 45, yPos); yPos += 4;
-    doc.text(memberData.expiryDate.toLocaleDateString(), 45, yPos);
-    
-    // QR Code area
-    doc.setDrawColor(200, 200, 200);
-    doc.rect(65, 18, 18, 18, 'S');
-    doc.setTextColor(100, 100, 100);
-    doc.text('QR CODE', 74, 38, { align: 'center' });
-    
-    // Footer
-    doc.setFontSize(5);
-    doc.text('Present this card for 50% discount', cardWidth/2, 48, { align: 'center' });
-    
-    // Generate filename and save
-    const fileName = `GHM_${memberData.memberId}.pdf`;
-    doc.save(fileName);
+// ==========================
+//  GLOBAL HEALTH MISSION
+//  PDF Generator (Card + Invoice)
+// ==========================
+async function generateMemberPDF(member) {
+  // ensure jsPDF is available
+  const { jsPDF } = window.jspdf;
+
+  // create new document
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+  });
+
+  // ---------- PAGE 1 : MEMBER CARD ----------
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("GLOBAL HEALTH MISSION", 105, 20, { align: "center" });
+
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    "Organized by Bright Mission Social Welfare (NGO)",
+    105,
+    27,
+    { align: "center" }
+  );
+
+  doc.setLineWidth(0.3);
+  doc.rect(10, 35, 190, 80); // border around card
+
+  doc.setFontSize(12);
+  doc.text(`Member Name: ${member.name || ""}`, 15, 45);
+  doc.text(`Member ID: ${member.member_id || ""}`, 15, 52);
+  doc.text(`Age: ${member.age || ""}`, 15, 59);
+  doc.text(`Gender: ${member.gender || ""}`, 60, 59);
+  doc.text(`District: ${member.district || ""}`, 15, 66);
+  doc.text(`Validity: ${formatDate(member.join_date)} → ${formatDate(member.expiry_date)}`, 15, 73);
+  doc.text(`Contact: ${member.contact_number || ""}`, 15, 80);
+  doc.text(`Aadhar: ${member.aadhar_number || ""}`, 15, 87);
+
+  // add optional photo
+  if (member.aadhar_photo_url) {
+    try {
+      const imgData = await getImageAsBase64(member.aadhar_photo_url);
+      doc.addImage(imgData, "JPEG", 135, 45, 50, 50);
+    } catch (e) {
+      console.warn("Photo not added:", e);
+    }
+  }
+
+  // ---------- PAGE 2 : INVOICE ----------
+  doc.addPage();
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("GLOBAL HEALTH MISSION", 105, 20, { align: "center" });
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    "Organized by Bright Mission Social Welfare (NGO)",
+    105,
+    27,
+    { align: "center" }
+  );
+
+  doc.setLineWidth(0.2);
+  doc.rect(10, 35, 190, 235); // border for receipt
+
+  doc.setFontSize(12);
+  doc.text(`Date: ${formatDate(member.join_date)}`, 15, 45);
+  doc.text(`Member Name: ${member.name || ""}`, 15, 52);
+  doc.text(`Member ID: ${member.member_id || ""}`, 15, 59);
+
+  // table header
+  const startY = 70;
+  doc.setFont("helvetica", "bold");
+  doc.text("Particulars", 15, startY);
+  doc.text("Amount (₹)", 150, startY);
+  doc.setLineWidth(0.1);
+  doc.line(15, startY + 2, 190, startY + 2);
+
+  doc.setFont("helvetica", "normal");
+  let y = startY + 10;
+  const items = [
+    { name: "Registration Fee", amount: "100.00" },
+    { name: "Health Card Printing", amount: "50.00" },
+  ];
+  let total = 0;
+  items.forEach((item) => {
+    doc.text(item.name, 15, y);
+    doc.text(item.amount, 150, y, { align: "left" });
+    total += parseFloat(item.amount);
+    y += 8;
+  });
+
+  doc.line(15, y, 190, y);
+  y += 8;
+  doc.setFont("helvetica", "bold");
+  doc.text("Total", 15, y);
+  doc.text(total.toFixed(2), 150, y);
+
+  y += 15;
+  doc.setFont("helvetica", "normal");
+  doc.text("Payment Mode: Cash / UPI", 15, y);
+  y += 8;
+  doc.text(`Received By: ${member.created_by || "Admin"}`, 15, y);
+  y += 20;
+  doc.text("Authorized Sign: __________________________", 15, y);
+
+  // ---------- Open in new tab ----------
+  const pdfBlob = doc.output("blob");
+  const pdfUrl = URL.createObjectURL(pdfBlob);
+  window.open(pdfUrl, "_blank");
+}
+
+// ---------- Helper functions ----------
+function formatDate(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  return d.toLocaleDateString("en-GB");
+}
+
+async function getImageAsBase64(url) {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 }
