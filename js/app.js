@@ -535,7 +535,7 @@ window.saveMember = async function() {
     }
 
     // Aadhaar photo upload (optional)
-    const aadharInput = document.getElementById('memberAadharPhoto');
+    const aadharInput = document.getElementById('aadharPhoto');
     let aadhar_url = null;
 
     if (aadharInput && aadharInput.files.length > 0) {
@@ -567,8 +567,43 @@ window.saveMember = async function() {
     }
     const memberId = 'GHM' + String(next).padStart(6, '0');
 
-    // Family members (will be empty for now until Part 3)
-    const family_members = window._familyMembersArray || [];
+    // ===============================
+// FAMILY / BENEFICIARY HANDLERS
+// ===============================
+const familyBody = document.getElementById("familyBody");
+const addFamilyBtn = document.getElementById("addFamilyBtn");
+
+if (addFamilyBtn) {
+  addFamilyBtn.addEventListener("click", () => {
+    const rows = familyBody.querySelectorAll("tr").length;
+    if (rows >= 4) {
+      alert("You can add up to 4 family members only.");
+      return;
+    }
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><input type="text" class="form-control fam-name" placeholder="Full Name" required></td>
+      <td><input type="number" class="form-control fam-age" placeholder="Age" min="0" required></td>
+      <td>
+        <select class="form-control fam-relation" required>
+          <option value="">Select</option>
+          <option>Spouse</option>
+          <option>Father</option>
+          <option>Mother</option>
+          <option>Brother</option>
+          <option>Sister</option>
+        </select>
+      </td>
+      <td class="text-center"><button type="button" class="btn btn-sm btn-danger removeFam">×</button></td>
+    `;
+    familyBody.appendChild(tr);
+
+    // delete handler
+    tr.querySelector(".removeFam").addEventListener("click", () => tr.remove());
+  });
+}
+
 
     // Insert into members table
     const { error } = await supabase
@@ -730,6 +765,18 @@ document.getElementById('updateMemberBtn').addEventListener('click', async () =>
     status: document.getElementById('editStatus').value,
     updated_at: new Date().toISOString()
   };
+
+  // ✅ Collect family member data
+const family_members = [];
+document.querySelectorAll("#familyBody tr").forEach(row => {
+  const name = row.querySelector(".fam-name").value.trim();
+  const age = parseInt(row.querySelector(".fam-age").value.trim(), 10);
+  const relation = row.querySelector(".fam-relation").value;
+  if (name && age && relation) {
+    family_members.push({ name, age, relation });
+  }
+});
+
 
   try {
     const { error } = await supabase.from('members').update(updates).eq('id', id);

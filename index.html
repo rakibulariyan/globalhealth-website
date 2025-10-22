@@ -943,10 +943,36 @@
                         </div>
                         
                         <div class="form-group">
-                            <label for="memberAadharPhoto">Aadhar Card Photo *</label>
+                            <label for="memberAadharPhoto">Upload Applicant Photo *</label>
                             <input type="file" class="form-control" id="memberAadharPhoto" accept=".jpg,.jpeg,.png,.pdf" required>
                             <small class="form-text text-muted">Max 50KB, JPG/PNG/PDF format</small>
                         </div>
+
+                        <!-- ✅ Beneficiary / Family Members Section -->
+<div class="card mt-3">
+  <div class="card-header bg-light">
+    <strong>👨‍👩‍👧 Family / Beneficiary Members (Max 4)</strong>
+  </div>
+  <div class="card-body">
+    <table class="table table-bordered" id="familyTable">
+      <thead>
+        <tr class="table-secondary">
+          <th>Name</th>
+          <th style="width:80px;">Age</th>
+          <th>Relation</th>
+          <th style="width:40px;">❌</th>
+        </tr>
+      </thead>
+      <tbody id="familyBody">
+        <!-- dynamic rows go here -->
+      </tbody>
+    </table>
+    <button type="button" class="btn btn-sm btn-outline-primary" id="addFamilyBtn">
+      ➕ Add Family Member
+    </button>
+  </div>
+</div>
+
                         
                         <div class="form-check mb-3">
                             <input type="checkbox" class="form-check-input" id="paymentReceived">
