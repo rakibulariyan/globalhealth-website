@@ -663,6 +663,59 @@ async function loadMembers() {
   }
 }
 
+// === Edit Member ===
+window.editMember = async function (id) {
+  try {
+    // Fetch the member data from Supabase
+    const { data, error } = await supabase
+      .from('members')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    // ✅ Fill the registration form with existing data
+    document.getElementById('memberName').value = data.name;
+    document.getElementById('fatherName').value = data.father_name || '';
+    document.getElementById('age').value = data.age || '';
+    document.getElementById('gender').value = data.gender || '';
+    document.getElementById('contactNumber').value = data.contact_number || '';
+    document.getElementById('alternateNumber').value = data.alternate_number || '';
+    document.getElementById('district').value = data.district || '';
+    document.getElementById('state').value = data.state || '';
+    document.getElementById('nomineeName').value = data.nominee_name || '';
+    document.getElementById('fullAddress').value = data.full_address || '';
+    document.getElementById('aadharNumber').value = data.aadhar_number || '';
+    document.getElementById('clinicalHistory').value = data.clinical_history || '';
+
+    // Save ID in a hidden field for later update
+    document.getElementById('memberForm').setAttribute('data-edit-id', id);
+
+    alert(`Editing member: ${data.name}`);
+  } catch (err) {
+    console.error('Error editing member:', err.message);
+    alert('❌ Failed to load member details for editing.');
+  }
+};
+
+// === Delete Member ===
+window.deleteMember = async function (id) {
+  if (!confirm('Are you sure you want to delete this member?')) return;
+
+  try {
+    const { error } = await supabase.from('members').delete().eq('id', id);
+
+    if (error) throw error;
+
+    alert('✅ Member deleted successfully!');
+    loadMembers(); // refresh table
+  } catch (err) {
+    console.error('Error deleting member:', err.message);
+    alert('❌ Failed to delete member.');
+  }
+};
+
 
 async function loadPayments() {
     // Placeholder
