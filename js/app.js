@@ -416,16 +416,99 @@ async function handleLogout() {
     showLogin();
 }
 
-// Make functions available globally
-window.editEmployee = function(id) {
-    alert('Edit employee: ' + id);
+// --- Real Edit & Delete functions for employees ---
+
+// Edit: open modal prefilled and allow update
+window.editEmployee = async function(id) {
+  try {
+    // fetch employee row by id
+    const { data: emp, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+
+    // Fill the Add/Edit Employee modal input fields (IDs must match your form)
+    document.getElementById('empName').value = emp.name || '';
+    document.getElementById('empFatherName').value = emp.father_name || '';
+    document.getElementById('empEmail').value = emp.email || '';
+    document.getElementById('empPhone').value = emp.phone || '';
+    document.getElementById('empRole').value = emp.role || 'employee';
+    document.getElementById('empAddress').value = emp.address || '';
+    // Do not prefill password for security
+    document.getElementById('empPassword').value = '';
+
+    // Show the modal (Bootstrap assumed)
+    $('#addEmployeeModal').modal('show');
+
+    // Change Save button temporarily into Update mode
+    const saveBtn = document.getElementById('saveEmployeeBtn');
+    const originalText = saveBtn.textContent;
+    const originalHandler = saveBtn.onclick;
+
+    saveBtn.textContent = 'Update Employee';
+    // remove existing onclick to avoid double-binding
+    saveBtn.onclick = null;
+
+    saveBtn.addEventListener('click', async function updateHandler () {
+      try {
+        const updated = {
+          name: document.getElementById('empName').value.trim(),
+          father_name: document.getElementById('empFatherName').value.trim(),
+          email: document.getElementById('empEmail').value.trim(),
+          phone: document.getElementById('empPhone').value.trim(),
+          role: document.getElementById('empRole').value,
+          address: document.getElementById('empAddress').value.trim()
+        };
+
+        const { error: updError } = await supabase
+          .from('employees')
+          .update(updated)
+          .eq('id', id);
+
+        if (updError) throw updError;
+
+        alert('Employee updated successfully');
+        $('#addEmployeeModal').modal('hide');
+        document.getElementById('addEmployeeForm').reset();
+
+        // restore Save button state
+        saveBtn.textContent = originalText;
+        saveBtn.onclick = originalHandler;
+        saveBtn.removeEventListener('click', updateHandler);
+
+        // reload table
+        if (typeof loadEmployees === 'function') loadEmployees();
+      } catch (e) {
+        alert('Error updating employee: ' + (e.message || e));
+      }
+    }, { once: true });
+
+  } catch (e) {
+    alert('Cannot load employee: ' + (e.message || e));
+  }
 };
 
-window.deleteEmployee = function(id) {
-    if (confirm('Are you sure you want to delete this employee?')) {
-        alert('Delete employee: ' + id);
-    }
+// Delete: confirm and remove row from Supabase
+window.deleteEmployee = async function(id) {
+  try {
+    if (!confirm('Are you sure you want to delete this employee?')) return;
+
+    const { error } = await supabase
+      .from('employees')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    alert('Employee deleted');
+    if (typeof loadEmployees === 'function') loadEmployees();
+  } catch (e) {
+    alert('Error deleting employee: ' + (e.message || e));
+  }
 };
+
 
 // Basic member functions (to be expanded)
 window.saveMember = async function() {
