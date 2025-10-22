@@ -666,41 +666,67 @@ async function loadMembers() {
 // === Edit Member ===
 window.editMember = async function (id) {
   try {
-    // Fetch the member data from Supabase
-  const { data, error } = await supabase
-  .from('members')
-  .select('*')
-  .eq('id', parseInt(id))
-  .maybeSingle();
+    const { data, error } = await supabase
+      .from('members')
+      .select('*')
+      .eq('id', parseInt(id))
+      .maybeSingle();
 
-console.log('Editing ID:', id, 'Fetched:', data, 'Error:', error);
-
-
+    console.log('Editing ID:', id, 'Fetched:', data, 'Error:', error);
     if (error) throw error;
+    if (!data) throw new Error('Member not found');
 
-    // ✅ Fill the registration form with existing data
-    document.getElementById('memberName').value = data.name;
-    document.getElementById('fatherName').value = data.father_name || '';
-    document.getElementById('age').value = data.age || '';
-    document.getElementById('gender').value = data.gender || '';
-    document.getElementById('contactNumber').value = data.contact_number || '';
-    document.getElementById('alternateNumber').value = data.alternate_number || '';
-    document.getElementById('district').value = data.district || '';
-    document.getElementById('state').value = data.state || '';
-    document.getElementById('nomineeName').value = data.nominee_name || '';
-    document.getElementById('fullAddress').value = data.full_address || '';
-    document.getElementById('aadharNumber').value = data.aadhar_number || '';
-    document.getElementById('clinicalHistory').value = data.clinical_history || '';
+    // ✅ Fill the edit modal fields
+    document.getElementById('editMemberId').value = data.id;
+    document.getElementById('editMemberName').value = data.name || '';
+    document.getElementById('editFatherName').value = data.father_name || '';
+    document.getElementById('editAge').value = data.age || '';
+    document.getElementById('editGender').value = data.gender || '';
+    document.getElementById('editAadhar').value = data.aadhar_number || '';
+    document.getElementById('editContact').value = data.contact_number || '';
+    document.getElementById('editDistrict').value = data.district || '';
+    document.getElementById('editAddress').value = data.full_address || '';
+    document.getElementById('editStatus').value = data.status || 'active';
 
-    // Save ID in a hidden field for later update
-    document.getElementById('memberForm').setAttribute('data-edit-id', id);
-
-    alert(`Editing member: ${data.name}`);
+    // ✅ Show modal (Bootstrap)
+    $('#editMemberModal').modal('show');
   } catch (err) {
     console.error('Error editing member:', err.message);
     alert('❌ Failed to load member details for editing.');
   }
 };
+
+
+// === Update Member ===
+document.getElementById('updateMemberBtn').addEventListener('click', async () => {
+  const id = document.getElementById('editMemberId').value;
+
+  const updates = {
+    name: document.getElementById('editMemberName').value,
+    father_name: document.getElementById('editFatherName').value,
+    age: parseInt(document.getElementById('editAge').value),
+    gender: document.getElementById('editGender').value,
+    aadhar_number: document.getElementById('editAadhar').value,
+    contact_number: document.getElementById('editContact').value,
+    district: document.getElementById('editDistrict').value,
+    full_address: document.getElementById('editAddress').value,
+    status: document.getElementById('editStatus').value,
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    const { error } = await supabase.from('members').update(updates).eq('id', id);
+    if (error) throw error;
+
+    alert('✅ Member updated successfully!');
+    $('#editMemberModal').modal('hide');
+    loadMembers();
+  } catch (err) {
+    console.error('Error updating member:', err.message);
+    alert('❌ Failed to update member.');
+  }
+});
+
 
 // === Delete Member ===
 window.deleteMember = async function (id) {
