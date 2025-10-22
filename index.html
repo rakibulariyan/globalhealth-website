@@ -1005,6 +1005,100 @@
         </div>
     </div>
 
+    <!-- Edit Member Modal -->
+<div class="modal fade" id="editMemberModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <div class="modal-header healthcare-primary">
+        <h5 class="modal-title">Edit Member Details</h5>
+        <button type="button" class="close" data-dismiss="modal">×</button>
+      </div>
+      <div class="modal-body">
+        <form id="editMemberForm">
+          <input type="hidden" id="editMemberId">
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="editMemberName">Full Name *</label>
+                <input type="text" class="form-control" id="editMemberName" required>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="form-group">
+                <label for="editFatherName">Father's Name *</label>
+                <input type="text" class="form-control" id="editFatherName" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="editAge">Age *</label>
+                <input type="number" class="form-control" id="editAge" required>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="editGender">Gender *</label>
+                <select class="form-control" id="editGender" required>
+                  <option value="">Select</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="form-group">
+                <label for="editAadhar">Aadhar Number *</label>
+                <input type="text" class="form-control" id="editAadhar" maxlength="12" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="editContact">Contact Number *</label>
+            <input type="tel" class="form-control" id="editContact" required>
+          </div>
+
+          <div class="form-group">
+            <label for="editDistrict">District *</label>
+            <select class="form-control" id="editDistrict" required>
+              <option value="">Select District</option>
+              <option value="Barpeta">Barpeta</option>
+              <option value="Bongaigaon">Bongaigaon</option>
+              <option value="Kokrajhar">Kokrajhar</option>
+              <option value="Dhubri">Dhubri</option>
+              <option value="Goalpara">Goalpara</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="editAddress">Full Address *</label>
+            <textarea class="form-control" id="editAddress" rows="2" required></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="editStatus">Status</label>
+            <select class="form-control" id="editStatus">
+              <option value="active">Active</option>
+              <option value="expired">Expired</option>
+            </select>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+        <button type="button" class="btn btn-primary" id="updateMemberBtn">Update Member</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
     <!-- jQuery -->
     <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
     <!-- Bootstrap 4 -->
