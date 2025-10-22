@@ -64,20 +64,23 @@ async function handleLogin(e) {
     }
 
         // Temporary fallback admin login
-    if (email === "rakibulsc2@gmail.com" && password === "Rakib@202526") {
-      currentUser = {
-        id: "local-admin",
-        email: email,
-        name: "Rakibul Ariyan",
-        role: "admin"
-      };
-      currentRole = "admin";
-      console.log("Logged in as default admin");
-      updateUIForRole();
-      showApp();
-      loadDashboardData();
-      return;
-    }
+    /*
+if (email === "rakibulsc2@gmail.com" && password === "Rakib@202526") {
+  currentUser = {
+    id: "local-admin",
+    email: email,
+    name: "Rakibul Ariyan",
+    role: "admin"
+  };
+  currentRole = "admin";
+  console.log("Logged in as default admin");
+  updateUIForRole();
+  showApp();
+  loadDashboardData();
+  return;
+}
+*/
+
 
     
     try {
@@ -110,33 +113,6 @@ async function handleLogin(e) {
         if (empError) {
             console.warn('No employee record found, but auth successful');
         }
-        
-        // Set user session
-        currentUser = {
-            id: data.user.id,
-            email: data.user.email,
-            name: employee?.name || 'User',
-            role: employee?.role || 'employee'
-        };
-        currentRole = employee?.role || 'employee';
-        
-        console.log('Login successful:', currentUser);
-        
-        // Update UI and show app
-        updateUIForRole();
-        showApp();
-        loadDashboardData();
-        
-    } catch (error) {
-        console.error('Login failed:', error);
-        alert('Login failed: ' + error.message);
-        
-        // Show helpful message
-        if (error.message.includes('Invalid login credentials')) {
-            alert('Please make sure:\n1. User exists in Supabase Authentication\n2. Email and password are correct\n3. User is confirmed');
-        }
-    }
-}
         
 
 // Update UI based on user role
