@@ -53,90 +53,103 @@ function setupEventListeners() {
 
 // WORKING LOGIN FUNCTION - Uses Supabase Auth
 async function handleLogin(e) {
-    e.preventDefault();
-    
-    const email = document.getElementById('loginEmail').value;
-    const password = document.getElementById('loginPassword').value;
-    
-    if (!email || !password) {
-        alert('Please enter both email and password');
-        return;
+  e.preventDefault();
+
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
+
+  if (!email || !password) {
+    alert('Please enter both email and password');
+    return;
+  }
+
+  try {
+    console.log('Attempting Supabase Auth login for:', email);
+
+    // Use Supabase Authentication
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password
+    });
+
+    if (error) {
+      console.error('Supabase Auth error:', error);
+      throw error;
     }
 
-        // Temporary fallback admin login
-    /*
-if (email === "rakibulsc2@gmail.com" && password === "Rakib@202526") {
-  currentUser = {
-    id: "local-admin",
-    email: email,
-    name: "Rakibul Ariyan",
-    role: "admin"
-  };
-  currentRole = "admin";
-  console.log("Logged in as default admin");
-  updateUIForRole();
-  showApp();
-  loadDashboardData();
-  return;
+    if (!data || !data.user) {
+      throw new Error('No user found after authentication');
+    }
+
+    console.log('Supabase Auth successful:', data.user);
+
+    // Now get employee details from database
+    const { data: employee, error: empError } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('email', email)
+      .single();
+
+    if (empError && empError.code !== 'PGRST116') { // PGRST116 can be "No rows" — still okay
+      console.warn('Warning fetching employee record:', empError);
+    }
+
+    // --- SET USER SESSION (important for RLS) ---
+    currentUser = {
+      id: data.user.id,
+      email: data.user.email,
+      name: employee?.name || 'User',
+      role: employee?.role || 'employee'
+    };
+    currentRole = employee?.role || 'employee';
+
+    console.log('Login successful:', currentUser);
+
+    // Update UI and show app
+    updateUIForRole();
+    showApp();
+    loadDashboardData();
+
+  } catch (error) {
+    console.error('Login failed:', error);
+    alert('Login failed: ' + (error.message || JSON.stringify(error)));
+
+    // Helpful hint for common scenario
+    if (error && error.message && error.message.toLowerCase().includes('invalid')) {
+      alert('Please make sure:\n1. User exists in Supabase Authentication\n2. Email and password are correct\n3. User is confirmed (not just invited)');
+    }
+  }
 }
-*/
 
-
-    
-    try {
-        console.log('Attempting Supabase Auth login for:', email);
-        
-        // Use Supabase Authentication
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-        
-        if (error) {
-            console.error('Supabase Auth error:', error);
-            throw new Error('Invalid login credentials');
-        }
-        
-        if (!data.user) {
-            throw new Error('No user found');
-        }
-        
-        console.log('Supabase Auth successful:', data.user);
-        
-        // Now get employee details from database
-        const { data: employee, error: empError } = await supabase
-            .from('employees')
-            .select('*')
-            .eq('email', email)
-            .single();
-            
-        if (empError) {
-            console.warn('No employee record found, but auth successful');
-        }
-        
-
-// Update UI based on user role
+// UI update function (must be defined outside handleLogin)
 function updateUIForRole() {
-    // Update user display
+  // Update user display (safe guards)
+  if (currentUser && currentUser.name) {
     document.getElementById('userName').textContent = currentUser.name;
     document.getElementById('dropdownUserName').textContent = currentUser.name;
     document.getElementById('dropdownUserEmail').textContent = currentUser.email;
-    
-    // Show/hide admin sections
-    document.querySelectorAll('.admin-only').forEach(el => {
-        el.style.display = (currentRole === 'admin') ? 'block' : 'none';
-    });
-    
-    // Show/hide employee-admin sections
-    document.querySelectorAll('.employee-admin').forEach(el => {
-        el.style.display = (currentRole === 'admin' || currentRole === 'coordinator' || currentRole === 'health_worker') ? 'block' : 'none';
-    });
-    
-    // Show/hide accountant sections
-    document.querySelectorAll('.accountant-only').forEach(el => {
-        el.style.display = (currentRole === 'admin' || currentRole === 'accountant') ? 'block' : 'none';
-    });
+  } else {
+    document.getElementById('userName').textContent = 'User';
+    document.getElementById('dropdownUserName').textContent = 'User';
+    document.getElementById('dropdownUserEmail').textContent = '';
+  }
+
+  // Show/hide admin sections
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = (currentRole === 'admin') ? 'block' : 'none';
+  });
+
+  // Show/hide employee-admin sections
+  document.querySelectorAll('.employee-admin').forEach(el => {
+    el.style.display = (currentRole === 'admin' || currentRole === 'coordinator' || currentRole === 'health_worker') ? 'block' : 'none';
+  });
+
+  // Show/hide accountant sections
+  document.querySelectorAll('.accountant-only').forEach(el => {
+    el.style.display = (currentRole === 'admin' || currentRole === 'accountant') ? 'block' : 'none';
+  });
 }
+
 
 // Show main application
 function showApp() {
