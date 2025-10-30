@@ -604,6 +604,16 @@ if (addFamilyBtn) {
   });
 }
 
+// ✅ Collect family member data
+const family_members = [];
+document.querySelectorAll("#familyBody tr").forEach(row => {
+  const name = row.querySelector(".fam-name").value.trim();
+  const age = parseInt(row.querySelector(".fam-age").value.trim(), 10);
+  const relation = row.querySelector(".fam-relation").value;
+  if (name && age && relation) {
+    family_members.push({ name, age, relation });
+  }
+});
 
     // Insert into members table
     const { error } = await supabase
@@ -766,18 +776,7 @@ document.getElementById('updateMemberBtn').addEventListener('click', async () =>
     updated_at: new Date().toISOString()
   };
 
-  // ✅ Collect family member data
-const family_members = [];
-document.querySelectorAll("#familyBody tr").forEach(row => {
-  const name = row.querySelector(".fam-name").value.trim();
-  const age = parseInt(row.querySelector(".fam-age").value.trim(), 10);
-  const relation = row.querySelector(".fam-relation").value;
-  if (name && age && relation) {
-    family_members.push({ name, age, relation });
-  }
-});
-
-
+  
   try {
     const { error } = await supabase.from('members').update(updates).eq('id', id);
     if (error) throw error;
