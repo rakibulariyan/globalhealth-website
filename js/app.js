@@ -43,6 +43,45 @@ function setupEventListeners() {
     
     // Member management
     document.getElementById('saveMemberBtn').addEventListener('click', saveMember);
+
+    // ✅ Add Family Member button logic
+const addFamilyBtn = document.getElementById('addFamilyBtn');
+const familyBody = document.getElementById('familyBody');
+
+if (addFamilyBtn && familyBody) {
+  addFamilyBtn.addEventListener('click', () => {
+    // Limit to 4 members
+    if (familyBody.children.length >= 4) {
+      alert("You can only add up to 4 family members.");
+      return;
+    }
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" class="form-control fam-name" placeholder="Name" required></td>
+      <td><input type="number" class="form-control fam-age" placeholder="Age" required></td>
+      <td>
+        <select class="form-control fam-relation" required>
+          <option value="">Select</option>
+          <option value="Spouse">Spouse</option>
+          <option value="Father">Father</option>
+          <option value="Mother">Mother</option>
+          <option value="Brother">Brother</option>
+          <option value="Sister">Sister</option>
+        </select>
+      </td>
+      <td class="text-center">
+        <button type="button" class="btn btn-sm btn-danger removeFam">×</button>
+      </td>
+    `;
+    familyBody.appendChild(tr);
+
+    // remove row button
+    tr.querySelector('.removeFam').addEventListener('click', () => tr.remove());
+  });
+}
+    // Member search
+
     document.getElementById('memberSearch').addEventListener('input', searchMembers);
     
     // Forgot password
@@ -750,6 +789,40 @@ window.editMember = async function (id) {
     document.getElementById('editAddress').value = data.full_address || '';
     document.getElementById('editStatus').value = data.status || 'active';
 
+    // ✅ Load Family Members dynamically
+const familyBody = document.getElementById("familyBody");
+if (familyBody) {
+  familyBody.innerHTML = ""; // clear previous rows
+
+  if (data.family_members && Array.isArray(data.family_members)) {
+    data.family_members.forEach(fam => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><input type="text" class="form-control fam-name" value="${fam.name || ""}"></td>
+        <td><input type="number" class="form-control fam-age" value="${fam.age || ""}"></td>
+        <td>
+          <select class="form-control fam-relation">
+            <option value="">Select</option>
+            <option value="Spouse" ${fam.relation === "Spouse" ? "selected" : ""}>Spouse</option>
+            <option value="Father" ${fam.relation === "Father" ? "selected" : ""}>Father</option>
+            <option value="Mother" ${fam.relation === "Mother" ? "selected" : ""}>Mother</option>
+            <option value="Brother" ${fam.relation === "Brother" ? "selected" : ""}>Brother</option>
+            <option value="Sister" ${fam.relation === "Sister" ? "selected" : ""}>Sister</option>
+          </select>
+        </td>
+        <td class="text-center">
+          <button type="button" class="btn btn-sm btn-danger removeFam">×</button>
+        </td>
+      `;
+      familyBody.appendChild(tr);
+
+      // remove row handler
+      tr.querySelector(".removeFam").addEventListener("click", () => tr.remove());
+    });
+  }
+}
+
+
     // ✅ Show modal (Bootstrap)
     $('#editMemberModal').modal('show');
   } catch (err) {
@@ -761,6 +834,23 @@ window.editMember = async function (id) {
 
 // === Update Member ===
 document.getElementById('updateMemberBtn').addEventListener('click', async () => {
+  // ✅ Step 1: Collect updated family members
+const updatedFamily = [];
+document.querySelectorAll("#familyBody tr").forEach(row => {
+  const name = row.querySelector(".fam-name")?.value.trim();
+  const age = parseInt(row.querySelector(".fam-age")?.value.trim(), 10);
+  const relation = row.querySelector(".fam-relation")?.value;
+  if (name && age && relation) {
+    updatedFamily.push({ name, age, relation });
+  }
+});
+// ✅ Prevent more than 4 family members
+if (updatedFamily.length > 4) {
+  alert("You can only keep up to 4 family members.");
+  return;
+}
+
+  // ✅ Step 2: Collect other updated fields
   const id = document.getElementById('editMemberId').value;
 
   const updates = {
@@ -773,6 +863,7 @@ document.getElementById('updateMemberBtn').addEventListener('click', async () =>
     district: document.getElementById('editDistrict').value,
     full_address: document.getElementById('editAddress').value,
     status: document.getElementById('editStatus').value,
+    family_members: updatedFamily,
     updated_at: new Date().toISOString()
   };
 
