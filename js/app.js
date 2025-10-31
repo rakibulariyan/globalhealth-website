@@ -563,11 +563,10 @@ window.deleteEmployee = async function(id) {
   }
 };
 
-// ---- Full Member Registration Implementation ----
-
-window.saveMember = async function() {
+// ---- Full Member Registration Implementation (with Family Members) ----
+window.saveMember = async function () {
   try {
-    // Collect form values
+    // Collect main member form values
     const name = document.getElementById('memberName').value.trim();
     const father = document.getElementById('memberFatherName').value.trim();
     const age = parseInt(document.getElementById('memberAge').value, 10);
@@ -588,29 +587,7 @@ window.saveMember = async function() {
       return;
     }
 
-    // Applicant Photo upload -> supabase storage 'applicant-photos'
-    const applicantInput = document.getElementById('applicantInput');
-    let applicant_url = null;
-
-    if (applicantInput && applicantInput.files && applicantInput.files.length > 0) {
-      const file = applicantInput.files[0];
-      const filePath = `applicant-${Date.now()}-${file.name}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('applicant-photos')
-        .upload(filePath, file, { cacheControl: '3600', upsert: false });
-
-      if (uploadError) {
-        console.error('Error uploading applicant photo:', uploadError.message);
-    alert('Error uploading applicant photo. Please try again.');
-  } else {
-      const { data: publicUrlData } = supabase
-        .storage
-        .from('applicant-photos')
-        .getPublicUrl(filePath);
-      applicant_url = publicUrlData.publicUrl;
-    }
-
-    // Generate next member_id
+    // ✅ Generate next member_id
     const { data: last } = await supabase
       .from('members')
       .select('member_id')
@@ -622,64 +599,47 @@ window.saveMember = async function() {
       const num = parseInt(last[0].member_id.replace(/\D/g, ''), 10);
       if (!isNaN(num)) next = num + 1;
     }
+
     const memberId = 'GHM' + String(next).padStart(6, '0');
 
+    // 📸 Upload applicant photo (optional)
+    let applicant_url = null;
+    const applicantInput = document.getElementById('applicantInput');
+
+    if (applicantInput && applicantInput.files && applicantInput.files.length > 0) {
+      const file = applicantInput.files[0];
+      const filePath = `applicant-${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('applicant-photos')
+        .upload(filePath, file, { cacheControl: '3600', upsert: false });
+
+      if (uploadError) {
+        console.error('Error uploading applicant photo:', uploadError.message);
+        alert('Error uploading applicant photo. Please try again.');
+      } else {
+        const { data: publicUrlData } = supabase
+          .storage
+          .from('applicant-photos')
+          .getPublicUrl(filePath);
+        applicant_url = publicUrlData.publicUrl;
+      }
     }
 
-    
-    // ===============================
-// FAMILY / BENEFICIARY HANDLERS
-// ===============================
-const familyBody = document.getElementById("familyBody");
-const addFamilyBtn = document.getElementById("addFamilyBtn");
+    // ✅ Collect family member data
+    const family_members = [];
+    document.querySelectorAll('#familyBody tr').forEach((row) => {
+      const fname = row.querySelector('.fam-name')?.value.trim();
+      const fage = parseInt(row.querySelector('.fam-age')?.value.trim(), 10);
+      const frel = row.querySelector('.fam-relation')?.value;
+      if (fname && fage && frel) {
+        family_members.push({ name: fname, age: fage, relation: frel });
+      }
+    });
 
-if (addFamilyBtn) {
-  addFamilyBtn.addEventListener("click", () => {
-    const rows = familyBody.querySelectorAll("tr").length;
-    if (rows >= 4) {
-      alert("You can add up to 4 family members only.");
-      return;
-    }
-
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><input type="text" class="form-control fam-name" placeholder="Full Name" required></td>
-      <td><input type="number" class="form-control fam-age" placeholder="Age" min="0" required></td>
-      <td>
-        <select class="form-control fam-relation" required>
-          <option value="">Select</option>
-          <option>Spouse</option>
-          <option>Father</option>
-          <option>Mother</option>
-          <option>Brother</option>
-          <option>Sister</option>
-        </select>
-      </td>
-      <td class="text-center"><button type="button" class="btn btn-sm btn-danger removeFam">×</button></td>
-    `;
-    familyBody.appendChild(tr);
-
-    // delete handler
-    tr.querySelector(".removeFam").addEventListener("click", () => tr.remove());
-  });
-}
-
-// ✅ Collect family member data
-const family_members = [];
-document.querySelectorAll("#familyBody tr").forEach(row => {
-  const name = row.querySelector(".fam-name").value.trim();
-  const age = parseInt(row.querySelector(".fam-age").value.trim(), 10);
-  const relation = row.querySelector(".fam-relation").value;
-  if (name && age && relation) {
-    family_members.push({ name, age, relation });
-  }
-});
-
-    // Insert into members table
-    const { error } = await supabase
-      .from('members')
-      .insert([{
-        member_id: `GHM${String(Date.now()).slice(-6)}` ,
+    // ✅ Insert main member data into Supabase
+    const { data, error } = await supabase.from('members').insert([
+      {
+        member_id: memberId,
         name,
         father_name: father,
         age,
@@ -690,45 +650,55 @@ document.querySelectorAll("#familyBody tr").forEach(row => {
         clinical_history: clinical,
         district,
         state,
-        full_address: address,
-        nominee_name: nominee,
+        address,
+        nominee,
         applicant_photo_url: applicant_url,
         payment_received: paymentReceived,
-        family_members
-      }]);
+        family_members, // ✅ JSON array of beneficiaries
+        join_date: new Date().toISOString(),
+        expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
+        created_by: currentUser ? currentUser.email : 'admin',
+      },
+    ]);
 
     if (error) throw error;
 
-    alert(`✅ Member registered successfully! ID: ${memberId}`);
-
-    // ✅ Generate PDF after successful registration
-generateMemberPDF({
-  name,
-  member_id: `GHM${String(Date.now()).slice(-6)}`,
-  age,
-  gender,
-  aadhar_number: aadhar,
-  contact_number: contact,
-  district,
-  join_date: new Date(),
-  expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-  created_by: currentUser ? currentUser.name : "Admin",
-  applicant_photo_url: applicant_url
-});
-
-
-
-    // Reset and close form
-    document.getElementById('addMemberForm').reset();
+    alert(`✅ Member registered successfully! Member ID: ${memberId}`);
     $('#addMemberModal').modal('hide');
-
-    // Refresh list if function exists
-    if (typeof loadMembers === 'function') loadMembers();
+    document.getElementById('addMemberForm').reset();
+    document.getElementById('familyBody').innerHTML = ''; // clear family table
+    loadMembers();
 
   } catch (err) {
-    alert('❌ Error registering member: ' + (err.message || err));
+    console.error('Error registering member:', err);
+    alert('Error registering member: ' + err.message);
   }
 };
+
+    if (error) throw error;
+
+    alert(`✅ Member registered successfully! Member ID: ${memberId}`);
+
+    // ✅ Generate Member Card & Receipt PDF
+    generateMemberPDF({
+      name,
+      member_id: memberId,
+      age,
+      gender,
+      aadhar_number: aadhar,
+      contact_number: contact,
+      district,
+      join_date: new Date(),
+      expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+      created_by: currentUser ? currentUser.name : "Admin",
+      applicant_photo_url: applicant_url
+    });
+
+    // ✅ Reset and close form
+    $('#addMemberModal').modal('hide');
+    document.getElementById('addMemberForm').reset();
+    document.getElementById('familyBody').innerHTML = ''; // clear family table
+    loadMembers();
 
 
 window.searchMembers = function() {
