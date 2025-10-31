@@ -774,10 +774,10 @@ window.editMember = async function (id) {
     document.getElementById('editFatherName').value = data.father_name || '';
     document.getElementById('editAge').value = data.age || '';
     document.getElementById('editGender').value = data.gender || '';
-    document.getElementById('editAadhar').value = editAadhar || '';
+    document.getElementById('editAadhar').value = data.aadhar_number || '';
     document.getElementById('editContact').value = data.contact_number || '';
     document.getElementById('editDistrict').value = data.district || '';
-    document.getElementById('editAddress').value = data.full_address || '';
+    document.getElementById('editAddress').value = data.address || '';
     document.getElementById('editStatus').value = data.status || 'active';
 
     // show preview in edit modal if photo exists
