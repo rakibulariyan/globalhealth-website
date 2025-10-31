@@ -19,13 +19,26 @@ async function initializeApp() {
     console.log('Initializing app...');
     showLogin();
     setupEventListeners();
+
+    // ✅ Keep user logged in even after refresh
+const { data: { session } } = await supabase.auth.getSession();
+
+if (session && session.user) {
+  currentUser = session.user;
+  showApp();              // show dashboard
+  updateUIForRole();      // adjust based on role
+  loadDashboardData();    // load data again
+  console.log("✅ Session restored:", session.user.email);
+} else {
+  showLogin();            // show login page if no session
+}
 }
 
 // Setup all event listeners
 function setupEventListeners() {
     // Login form
     loginForm.addEventListener('submit', handleLogin);
-    
+
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     
@@ -450,9 +463,11 @@ async function sendPasswordReset() {
 
 // Logout function
 async function handleLogout() {
+    await supabase.auth.signOut();
     currentUser = null;
     currentRole = null;
     showLogin();
+    console.log('👋 Logged out successfully');
 }
 
 // --- Real Edit & Delete functions for employees ---
