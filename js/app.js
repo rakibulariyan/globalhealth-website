@@ -588,7 +588,7 @@ window.saveMember = async function() {
         console.error('Error uploading applicant photo:', uploadError.message);
     alert('Error uploading applicant photo. Please try again.');
   } else {
-      const { data: publicUrl } = supabase
+      const { data: publicUrlData } = supabase
         .storage
         .from('applicant-photos')
         .getPublicUrl(filePath);
@@ -677,7 +677,7 @@ document.querySelectorAll("#familyBody tr").forEach(row => {
         state,
         full_address: address,
         nominee_name: nominee,
-        aadhar_photo_url: applicant_url,
+        applicant_photo_url: applicant_url,
         payment_received: paymentReceived,
         family_members
       }]);
@@ -698,7 +698,7 @@ generateMemberPDF({
   join_date: new Date(),
   expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
   created_by: currentUser ? currentUser.name : "Admin",
-  aadhar_photo_url: applicant_url
+  applicant_photo_url: applicant_url
 });
 
 
@@ -789,11 +789,28 @@ window.editMember = async function (id) {
     document.getElementById('editFatherName').value = data.father_name || '';
     document.getElementById('editAge').value = data.age || '';
     document.getElementById('editGender').value = data.gender || '';
-    document.getElementById('editAadhar').value = data.aadhar_number || '';
+    document.getElementById('editAadhar').value = editAadhar || '';
     document.getElementById('editContact').value = data.contact_number || '';
     document.getElementById('editDistrict').value = data.district || '';
     document.getElementById('editAddress').value = data.full_address || '';
     document.getElementById('editStatus').value = data.status || 'active';
+
+    // show preview in edit modal if photo exists
+const editPhotoPreview = document.getElementById('editApplicantPhotoPreview');
+if (data.applicant_photo_url) {
+  if (!editPhotoPreview) {
+    const img = document.createElement('img');
+    img.id = 'editApplicantPhotoPreview';
+    img.style.maxWidth = '120px';
+    img.style.maxHeight = '120px';
+    const parent = document.getElementById('editMemberForm'); // or wherever to append
+    parent.appendChild(img);
+    img.src = data.applicant_photo_url;
+  } else {
+    editPhotoPreview.src = data.applicant_photo_url;
+  }
+}
+
 
     // ✅ Load Family Members dynamically
 const familyBody = document.getElementById("familyBody");

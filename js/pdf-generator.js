@@ -41,9 +41,9 @@ async function generateMemberPDF(member) {
   doc.text(`Aadhar: ${member.aadhar_number || ""}`, 15, 87);
 
   // add optional photo
-  if (member.aadhar_photo_url) {
+  if (member.applicant_photo_url) {
     try {
-      const imgData = await getImageAsBase64(member.aadhar_photo_url);
+      const imgData = await getImageAsBase64(member.applicant_photo_url);
       doc.addImage(imgData, "JPEG", 135, 45, 50, 50);
     } catch (e) {
       console.warn("Photo not added:", e);
