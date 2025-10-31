@@ -604,7 +604,7 @@ window.saveMember = async function () {
 
     // 📸 Upload applicant photo (optional)
     let applicant_url = null;
-    const applicantInput = document.getElementById('applicantInput');
+    const applicantInput = document.getElementById('applicantPhoto');
 
     if (applicantInput && applicantInput.files && applicantInput.files.length > 0) {
       const file = applicantInput.files[0];
