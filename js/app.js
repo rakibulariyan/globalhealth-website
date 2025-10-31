@@ -573,23 +573,26 @@ window.saveMember = async function() {
       return;
     }
 
-    // Aadhaar photo upload (optional)
-    const aadharInput = document.getElementById('aadharPhoto');
-    let aadhar_url = null;
+    // Applicant Photo upload -> supabase storage 'applicant-photos'
+    const applicantInput = document.getElementById('applicantInput');
+    let applicant_url = null;
 
-    if (aadharInput && aadharInput.files.length > 0) {
-      const file = aadharInput.files[0];
-      const filePath = `aadhar-${Date.now()}-${file.name}`;
+    if (applicantInput && applicantInput.files && applicantInput.files.length > 0) {
+      const file = applicantInput.files[0];
+      const filePath = `applicant-${Date.now()}-${file.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('aadhar-uploads')
-        .upload(filePath, file);
-      if (uploadError) throw uploadError;
+        .from('applicant-photos')
+        .upload(filePath, file, { cacheControl: '3600', upsert: false });
 
+      if (uploadError) {
+        console.error('Error uploading applicant photo:', uploadError.message);
+    alert('Error uploading applicant photo. Please try again.');
+  } else {
       const { data: publicUrl } = supabase
         .storage
-        .from('aadhar-uploads')
+        .from('applicant-photos')
         .getPublicUrl(filePath);
-      aadhar_url = publicUrl.publicUrl;
+      applicant_url = publicUrlData.publicUrl;
     }
 
     // Generate next member_id
@@ -606,6 +609,9 @@ window.saveMember = async function() {
     }
     const memberId = 'GHM' + String(next).padStart(6, '0');
 
+    }
+
+    
     // ===============================
 // FAMILY / BENEFICIARY HANDLERS
 // ===============================
@@ -671,7 +677,7 @@ document.querySelectorAll("#familyBody tr").forEach(row => {
         state,
         full_address: address,
         nominee_name: nominee,
-        aadhar_photo_url: aadhar_url,
+        aadhar_photo_url: applicant_url,
         payment_received: paymentReceived,
         family_members
       }]);
@@ -692,7 +698,7 @@ generateMemberPDF({
   join_date: new Date(),
   expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
   created_by: currentUser ? currentUser.name : "Admin",
-  aadhar_photo_url: aadhar_url
+  aadhar_photo_url: applicant_url
 });
 
 
