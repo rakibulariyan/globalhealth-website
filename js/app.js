@@ -664,7 +664,7 @@ document.querySelectorAll("#familyBody tr").forEach(row => {
     const { error } = await supabase
       .from('members')
       .insert([{
-        member_id: memberId,
+        member_id: `GHM${String(Date.now()).slice(-6)}`,,
         name,
         father_name: father,
         age,
@@ -689,7 +689,7 @@ document.querySelectorAll("#familyBody tr").forEach(row => {
     // ✅ Generate PDF after successful registration
 generateMemberPDF({
   name,
-  member_id: memberId,
+  member_id: `GHM${String(Date.now()).slice(-6)}`,,
   age,
   gender,
   aadhar_number: aadhar,
