@@ -890,22 +890,26 @@ if (updatedFamily.length > 4) {
 });
 
 
-// === Delete Member ===
+// Delete member
 window.deleteMember = async function (id) {
-  if (!confirm('Are you sure you want to delete this member?')) return;
-
   try {
-    const { error } = await supabase.from('members').delete().eq('id', id);
+    if (!confirm('⚠️ Are you sure you want to delete this member?')) return;
+
+    const { error } = await supabase
+      .from('members')
+      .delete()
+      .eq('id', parseInt(id));
 
     if (error) throw error;
 
-    alert('✅ Member deleted successfully!');
-    loadMembers(); // refresh table
+    alert('🗑️ Member deleted successfully.');
+    if (typeof loadMembers === 'function') loadMembers();
   } catch (err) {
-    console.error('Error deleting member:', err.message);
-    alert('❌ Failed to delete member.');
+    console.error('Error deleting member:', err);
+    alert('Error deleting member: ' + (err.message || err));
   }
 };
+
 
 
 async function loadPayments() {
