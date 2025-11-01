@@ -679,7 +679,7 @@ window.saveMember = async function () {
 
     alert(`✅ Member registered successfully! Member ID: ${memberId}`);
 
-    // ✅ Generate Member Card & Receipt PDF
+    // ✅ Generate Member Card & Receipt PDF //
     generateMemberPDF({
       name,
       member_id: memberId,
@@ -777,7 +777,7 @@ window.editMember = async function (id) {
     document.getElementById('editAadhar').value = data.aadhar_number || '';
     document.getElementById('editContact').value = data.contact_number || '';
     document.getElementById('editDistrict').value = data.district || '';
-    document.getElementById('editAddress').value = data.address || '';
+    document.getElementById('editAddress').value = data.address || data.full_address || '';
     document.getElementById('editStatus').value = data.status || 'active';
 
     // show preview in edit modal if photo exists
