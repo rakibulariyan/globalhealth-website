@@ -755,90 +755,6 @@ async function loadMembers() {
   }
 }
 
-// === Edit Member ===
-window.editMember = async function (id) {
-  try {
-    const { data, error } = await supabase
-      .from('members')
-      .select('*')
-      .eq('id', parseInt(id))
-      .maybeSingle();
-
-    console.log('Editing ID:', id, 'Fetched:', data, 'Error:', error);
-    if (error) throw error;
-    if (!data) throw new Error('Member not found');
-
-    // ✅ Fill the edit modal fields
-    document.getElementById('editMemberId').value = data.id;
-    document.getElementById('editMemberName').value = data.name || '';
-    document.getElementById('editFatherName').value = data.father_name || '';
-    document.getElementById('editAge').value = data.age || '';
-    document.getElementById('editGender').value = data.gender || '';
-    document.getElementById('editAadhar').value = data.aadhar_number || '';
-    document.getElementById('editContact').value = data.contact_number || '';
-    document.getElementById('editDistrict').value = data.district || '';
-    document.getElementById('editAddress').value = data.address || data.full_address || '';
-    document.getElementById('editStatus').value = data.status || 'active';
-
-    // show preview in edit modal if photo exists
-const editPhotoPreview = document.getElementById('editApplicantPhotoPreview');
-if (data.applicant_photo_url) {
-  if (!editPhotoPreview) {
-    const img = document.createElement('img');
-    img.id = 'editApplicantPhotoPreview';
-    img.style.maxWidth = '120px';
-    img.style.maxHeight = '120px';
-    const parent = document.getElementById('editMemberForm'); // or wherever to append
-    parent.appendChild(img);
-    img.src = data.applicant_photo_url;
-  } else {
-    editPhotoPreview.src = data.applicant_photo_url;
-  }
-}
-
-
-    // ✅ Load Family Members dynamically
-const familyBody = document.getElementById("familyBody");
-if (familyBody) {
-  familyBody.innerHTML = ""; // clear previous rows
-
-  if (data.family_members && Array.isArray(data.family_members)) {
-    data.family_members.forEach(fam => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><input type="text" class="form-control fam-name" value="${fam.name || ""}"></td>
-        <td><input type="number" class="form-control fam-age" value="${fam.age || ""}"></td>
-        <td>
-          <select class="form-control fam-relation">
-            <option value="">Select</option>
-            <option value="Spouse" ${fam.relation === "Spouse" ? "selected" : ""}>Spouse</option>
-            <option value="Father" ${fam.relation === "Father" ? "selected" : ""}>Father</option>
-            <option value="Mother" ${fam.relation === "Mother" ? "selected" : ""}>Mother</option>
-            <option value="Brother" ${fam.relation === "Brother" ? "selected" : ""}>Brother</option>
-            <option value="Sister" ${fam.relation === "Sister" ? "selected" : ""}>Sister</option>
-          </select>
-        </td>
-        <td class="text-center">
-          <button type="button" class="btn btn-sm btn-danger removeFam">×</button>
-        </td>
-      `;
-      familyBody.appendChild(tr);
-
-      // remove row handler
-      tr.querySelector(".removeFam").addEventListener("click", () => tr.remove());
-    });
-  }
-}
-
-
-    // ✅ Show modal (Bootstrap)
-    $('#editMemberModal').modal('show');
-  } catch (err) {
-    console.error('Error editing member:', err.message);
-    alert('❌ Failed to load member details for editing.');
-  }
-};
-
 
 // === Update Member ===
 document.getElementById('updateMemberBtn').addEventListener('click', async () => {
@@ -889,29 +805,6 @@ if (updatedFamily.length > 4) {
   }
 });
 
-
-// Delete member
-window.deleteMember = async function (id) {
-  try {
-    if (!confirm('⚠️ Are you sure you want to delete this member?')) return;
-
-    const { error } = await supabase
-      .from('members')
-      .delete()
-      .eq('id', parseInt(id));
-
-    if (error) throw error;
-
-    alert('🗑️ Member deleted successfully.');
-    if (typeof loadMembers === 'function') loadMembers();
-  } catch (err) {
-    console.error('Error deleting member:', err);
-    alert('Error deleting member: ' + (err.message || err));
-  }
-};
-
-
-
 async function loadPayments() {
     // Placeholder
 }
@@ -923,3 +816,99 @@ async function loadReports() {
 async function loadProfile() {
     // Placeholder
 }
+
+// ==============================
+// DELETE MEMBER FUNCTION
+// ==============================
+window.deleteMember = async function (id) {
+  try {
+    if (!confirm("Are you sure you want to delete this member?")) return;
+
+    const { error } = await supabase
+      .from('members')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
+    alert("✅ Member deleted successfully!");
+    loadMembers(); // reload the table
+  } catch (err) {
+    console.error("Error deleting member:", err);
+    alert("❌ Error deleting member: " + err.message);
+  }
+};
+
+// ==============================
+// EDIT MEMBER FUNCTION
+// ==============================
+window.editMember = async function (id) {
+  try {
+    const { data: member, error } = await supabase
+      .from('members')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+
+    // Fill form fields inside the modal
+    document.getElementById('memberName').value = member.name || '';
+    document.getElementById('memberFatherName').value = member.father_name || '';
+    document.getElementById('memberAge').value = member.age || '';
+    document.getElementById('memberGender').value = member.gender || '';
+    document.getElementById('memberAadhar').value = member.aadhar_number || '';
+    document.getElementById('memberContact').value = member.contact_number || '';
+    document.getElementById('memberAlternate').value = member.alternate_number || '';
+    document.getElementById('memberClinical').value = member.clinical_history || '';
+    document.getElementById('memberDistrict').value = member.district || '';
+    document.getElementById('memberState').value = member.state || 'Assam';
+    document.getElementById('memberAddress').value = member.full_address || member.address || '';
+    document.getElementById('memberNominee').value = member.nominee_name || member.nominee || '';
+
+    // Show the same modal used for registration
+    $('#editMemberModal').modal('show');
+
+    // Change the Register button text to "Update Member"
+    const btn = document.getElementById('saveMemberBtn');
+    btn.textContent = 'Update Member';
+
+    // Replace its old click function
+    btn.onclick = async () => {
+      try {
+        const updates = {
+          name: document.getElementById('memberName').value.trim(),
+          father_name: document.getElementById('memberFatherName').value.trim(),
+          age: parseInt(document.getElementById('memberAge').value, 10),
+          gender: document.getElementById('memberGender').value,
+          aadhar_number: document.getElementById('memberAadhar').value.trim(),
+          contact_number: document.getElementById('memberContact').value.trim(),
+          alternate_number: document.getElementById('memberAlternate').value.trim(),
+          clinical_history: document.getElementById('memberClinical').value.trim(),
+          district: document.getElementById('memberDistrict').value,
+          state: document.getElementById('memberState').value,
+          full_address: document.getElementById('memberAddress').value.trim(),
+          nominee_name: document.getElementById('memberNominee').value.trim(),
+          updated_at: new Date()
+        };
+
+        const { error: updateError } = await supabase
+          .from('members')
+          .update(updates)
+          .eq('id', id);
+
+        if (updateError) throw updateError;
+
+        alert('✅ Member updated successfully!');
+        $('#addMemberModal').modal('hide');
+        btn.textContent = 'Register Member';
+        loadMembers();
+      } catch (err) {
+        alert('❌ Error updating member: ' + err.message);
+      }
+    };
+  } catch (err) {
+    console.error('Error editing member:', err);
+    alert('❌ Error loading member details.');
+  }
+};
