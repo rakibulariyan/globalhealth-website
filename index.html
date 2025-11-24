@@ -865,7 +865,35 @@
                                 </div>
                             </div>
                         </div>
-                        
+
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="empDistrict">District</label>
+                                    <select class="form-control" id="empDistrict">
+                                        <option value="">Select District</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="empBlock">Block</label>
+                                    <select class="form-control" id="empBlock" disabled>
+                                        <option value="">Select Block</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="empGP">GP</label>
+                                    <select class="form-control" id="empGP" disabled>
+                                        <option value="">Select GP</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+
                         <div class="form-group">
                             <label for="empAddress">Address</label>
                             <textarea class="form-control" id="empAddress" rows="2"></textarea>
@@ -955,17 +983,22 @@
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group">
-                                    <label for="memberDistrict">District *</label>
-                                    <select class="form-control" id="memberDistrict" required>
+                                    <label for="memberDistrictID">District *</label>
+                                    <select class="form-control" id="memberDistrictId" required>
                                         <option value="">Select District</option>
-                                        <option value="Barpeta">Barpeta</option>
-                                        <option value="Bongaigaon">Bongaigaon</option>
-                                        <option value="Kokrajhar">Kokrajhar</option>
-                                        <option value="Dhubri">Dhubri</option>
-                                        <option value="Goalpara">Goalpara</option>
                                     </select>
                                 </div>
                             </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="memberGpId">GP *</label>
+                                    <select class="form-control" id="memberGpId" required disabled>
+                                        <option value="">Select GP</option>
+                                    </select>
+                                </div>
+                            </div>
+
+
                             <div class="col-md-6">
                                 <div class="form-group">
                                     <label for="memberState">State *</label>
@@ -991,45 +1024,56 @@
                         </div>
 
                         <!-- ✅ Beneficiary / Family Members Section -->
-<div class="card mt-3">
-  <div class="card-header bg-light">
-    <strong>👨‍👩‍👧 Family / Beneficiary Members (Max 4)</strong>
-  </div>
-  <div class="card-body">
-    <table class="table table-bordered" id="familyTable">
-      <thead>
-        <tr class="table-secondary">
-          <th>Name</th>
-          <th style="width:80px;">Age</th>
-          <th>Relation</th>
-          <th style="width:40px;">❌</th>
-        </tr>
-      </thead>
-      <tbody id="familyBody">
-        <!-- dynamic rows go here -->
-      </tbody>
-    </table>
-    <button type="button" class="btn btn-sm btn-outline-primary" id="addFamilyBtn">
-      ➕ Add Family Member
-    </button>
-  </div>
-</div>
-   
+                         <div class="card mt-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0">Beneficiary / Family Members (Optional)</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-bordered" id="familyTable">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Age</th>
+                                            <th>Gender</th>
+                                            <th>Relation</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <!-- Dynamic rows will be added here -->
+                                    </tbody>
+                                </table>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="addFamilyMemberBtn">
+                                    <i class="fas fa-plus me-1"></i> Add Family Member
+                                </button>
+                            </div>
+                        </div>
+
+
                         <div class="form-check mb-3">
-                            <input type="checkbox" class="form-check-input" id="paymentReceived">
-                            <label class="form-check-label" for="paymentReceived">
-                                Payment of ₹300 received
+                            <input type="checkbox" class="form-check-input" id="termsCheck" required>
+                            <label class="form-check-label" for="termsCheck">
+                                I agree to the <a href="https://globalhealthmission.in/terms-conditions/" target="_blank">terms and conditions</a>.
                             </label>
                         </div>
+                        <div class="form-check mb-3">
+                            <input type="checkbox" class="form-check-input" id="PaymentCheck" required>
+                             I confirm that I have received payment of ₹250 from the member.
+                            <label class="form-check"
+                                for="PaymentCheck"></label>
+                        </div>
                     </form>
-                </div>
+                    </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                    <button type="button" class="btn btn-primary" id="saveMemberBtn">Register Member</button>
+                    <button type="button" class="btn btn-primary" id="registerMemberBtn">Register Member</button>
                 </div>
             </div>
         </div>
     </div>
+    
+
+
 
     <!-- Change Photo Modal -->
     <div class="modal fade" id="changePhotoModal" tabindex="-1">
