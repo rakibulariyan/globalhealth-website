@@ -130,3 +130,41 @@
         width: 100%;
     }
 }
+
+    /* Make Master tabs look like AdminLTE tabs */
+    #masterTabs .nav-link {
+        cursor: pointer;
+        padding: 8px 15px;
+        font-weight: 500;
+        border-radius: 4px;
+        color: #444;
+        background: #f4f6f9;
+        margin-right: 5px;
+        border: 1px solid #ddd;
+    }
+
+    #masterTabs .nav-link.active {
+        background: #007bff;
+        color: #fff;
+        border-color: #007bff;
+    }
+
+    /* Responsive table */
+    #masterContent table {
+        width: 100%;
+        background: white;
+    }
+
+    #masterContent .table-responsive {
+        overflow-x: auto;
+    }
+
+    /* Card padding fixes */
+    #master .card-body {
+        padding: 15px;
+    }
+
+    /* Export button alignment */
+    #masterContent .btn {
+        margin-bottom: 10px;
+    }
