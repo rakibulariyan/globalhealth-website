@@ -404,6 +404,7 @@ async function loadDashboardData() {
     }
 }
 
+// Load master data table
 async function loadMasterTable(type) {
   const container = document.getElementById('masterContent');
   container.innerHTML = '<p>Loading...</p>';
@@ -412,12 +413,16 @@ async function loadMasterTable(type) {
   let data = [];
 
   if (type === 'districts') {
-    let { data: rows } = await supabase.from('districts').select('*').order('name');
-    data = rows || [];
+    let { data: rows } = await supabase
+    .from('districts')
+    .select('*')
+    .order('name');
+    data = rows;
 
     tableHtml = `
     <button class="btn btn-success mb-2" onclick="exportMasterCSV('districts')">Export CSV</button>
-    <table class="table table-bordered">
+    <div class="table-responsive">
+    <table class="table table-bordered table-striped">
       <thead><tr><th>ID</th><th>Name</th></tr></thead>
       <tbody>
        ${rows.map(r => `
@@ -428,6 +433,7 @@ async function loadMasterTable(type) {
         `).join('')}
       </tbody>
     </table>
+    </div>
     `;
   }
 
@@ -441,7 +447,8 @@ async function loadMasterTable(type) {
 
     tableHtml += `
     <button class="btn btn-success mb-2" onclick="exportMasterCSV('blocks')">Export CSV</button>
-    <table class="table table-bordered">
+    <div class="table-responsive">
+    table class="table table-bordered table-striped">
       <thead><tr><th>ID</th><th>Name</th><th>District</th></tr></thead>
       <tbody>
         ${rows.map(r => `
@@ -453,6 +460,7 @@ async function loadMasterTable(type) {
         `).join('')}
       </tbody>
     </table>
+    </div>
     `;
   }
 
@@ -466,7 +474,8 @@ async function loadMasterTable(type) {
 
     tableHtml += `
     <button class="btn btn-success mb-2" onclick="exportMasterCSV('gps')">Export CSV</button>
-    <table class="table table-bordered">
+    <div class="table-responsive">
+    <table class="table table-bordered table-striped">
       <thead><tr><th>ID</th><th>District</th><th>Block</th><th>GP</th></tr></thead>
       <tbody>
         ${rows.map(r => `
@@ -479,6 +488,7 @@ async function loadMasterTable(type) {
         `).join('')}
       </tbody>
     </table>
+    </div>
     `;
   }
 
