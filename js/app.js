@@ -407,126 +407,177 @@ async function loadDashboardData() {
 // MASTER DATA TAB HANDLER
 // ---------------------------
 
+// ✅ FIXED: Master tab switching event listener
 document.querySelectorAll('#masterTabs .nav-link').forEach(tab => {
-    tab.addEventListener('click', async function () {
-        document.querySelector('#masterTabs .nav-link.active').classList.remove('active');
-        this.classList.add('active');
-
-        const selected = this.dataset.master;
-        loadMasterData(selected);
+    tab.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        // Remove active class from all master tabs
+        document.querySelectorAll('#masterTabs .nav-link').forEach(t => t.classList.remove('active'));
+        
+        // Add active class to clicked tab
+        tab.classList.add('active');
+        
+        // ✅ FIX: Get the correct data-master attribute from the clicked tab
+        const masterType = tab.dataset.master;
+        console.log('Loading master data for:', masterType);
+        
+        // ✅ FIX: Pass the correct parameter
+        await loadMasterTable(masterType);
     });
 });
 
-async function loadMasterData(type) {
-    const content = document.getElementById("masterContent");
-    content.innerHTML = `<p class='text-center text-muted'>Loading...</p>`;
-
+// ✅ FIXED: Load master table function with correct queries
+async function loadMasterTable(type) {
+    const content = document.getElementById('masterContent');
+    content.innerHTML = '<div class="text-center p-5"><div class="spinner-border" role="status"></div><p>Loading...</p></div>';
+    
     let tableHTML = "";
-
-    if (type === "districts") {
-        const { data, error } = await supabase.from("districts").select("*").order("id");
-
-        if (error) {
-            content.innerHTML = "<p class='text-danger'>Failed to load districts</p>";
-            return;
+    
+    try {
+        if (type === "districts") {
+            // ✅ Query districts
+            const { data, error } = await supabase
+                .from("districts")
+                .select("*")
+                .order("id");
+            
+            if (error) {
+                console.error('Districts error:', error);
+                content.innerHTML = '<div class="alert alert-danger">Failed to load districts</div>';
+                return;
+            }
+            
+            tableHTML = `
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>District Name</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data && data.length > 0 
+                                ? data.map(d => `
+                                    <tr>
+                                        <td>${d.id}</td>
+                                        <td>${d.name}</td>
+                                    </tr>
+                                `).join('')
+                                : '<tr><td colspan="2" class="text-center">No districts found</td></tr>'
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+        } else if (type === "blocks") {
+            // ✅ Query blocks with district relationship
+            const { data, error } = await supabase
+                .from("blocks")
+                .select(`
+                    id,
+                    name,
+                    district_id,
+                    districts (
+                        name
+                    )
+                `)
+                .order("id");
+            
+            if (error) {
+                console.error('Blocks error:', error);
+                content.innerHTML = '<div class="alert alert-danger">Failed to load blocks</div>';
+                return;
+            }
+            
+            tableHTML = `
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Block Name</th>
+                                <th>District</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data && data.length > 0 
+                                ? data.map(b => `
+                                    <tr>
+                                        <td>${b.id}</td>
+                                        <td>${b.name}</td>
+                                        <td>${b.districts?.name || 'N/A'}</td>
+                                    </tr>
+                                `).join('')
+                                : '<tr><td colspan="3" class="text-center">No blocks found</td></tr>'
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+        } else if (type === "gps") {
+            // ✅ Query GPs with block and district relationship
+            const { data, error } = await supabase
+                .from("gps")
+                .select(`
+                    id,
+                    name,
+                    block_id,
+                    blocks (
+                        name,
+                        districts (
+                            name
+                        )
+                    )
+                `)
+                .order("id");
+            
+            if (error) {
+                console.error('GPs error:', error);
+                content.innerHTML = '<div class="alert alert-danger">Failed to load GPs</div>';
+                return;
+            }
+            
+            tableHTML = `
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>GP Name</th>
+                                <th>Block</th>
+                                <th>District</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data && data.length > 0 
+                                ? data.map(g => `
+                                    <tr>
+                                        <td>${g.id}</td>
+                                        <td>${g.name}</td>
+                                        <td>${g.blocks?.name || 'N/A'}</td>
+                                        <td>${g.blocks?.districts?.name || 'N/A'}</td>
+                                    </tr>
+                                `).join('')
+                                : '<tr><td colspan="4" class="text-center">No GPs found</td></tr>'
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            `;
         }
-
-        tableHTML = `
-            <h4>District List</h4>
-            <table class="table table-bordered table-hover">
-                <thead class="table-secondary">
-                    <tr>
-                        <th>ID</th>
-                        <th>District Name</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.map(d => `
-                        <tr>
-                            <td>${d.id}</td>
-                            <td>${d.name}</td>
-                        </tr>
-                    `).join("")}
-                </tbody>
-            </table>
-        `;
+        
+        content.innerHTML = tableHTML;
+        
+    } catch (error) {
+        console.error('Error loading master table:', error);
+        content.innerHTML = '<div class="alert alert-danger">Error loading data: ' + error.message + '</div>';
     }
-
-    if (type === "blocks") {
-        const { data, error } = await supabase
-            .from("blocks")
-            .select("id, name, district_id, districts(name)")
-            .order("id");
-
-        if (error) {
-            content.innerHTML = "<p class='text-danger'>Failed to load blocks</p>";
-            return;
-        }
-
-        tableHTML = `
-            <h4>Block List</h4>
-            <table class="table table-bordered table-hover">
-                <thead class="table-secondary">
-                    <tr>
-                        <th>ID</th>
-                        <th>Block Name</th>
-                        <th>District</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.map(b => `
-                        <tr>
-                            <td>${b.id}</td>
-                            <td>${b.name}</td>
-                            <td>${b.districts.name}</td>
-                        </tr>
-                    `).join("")}
-                </tbody>
-            </table>
-        `;
-    }
-
-    if (type === "gps") {
-        const { data, error } = await supabase
-            .from("gps")
-            .select("id, name, block_id, blocks(name, districts(name))")
-            .order("id");
-
-        if (error) {
-            content.innerHTML = "<p class='text-danger'>Failed to load GPs</p>";
-            return;
-        }
-
-        tableHTML = `
-            <h4>GP List</h4>
-            <table class="table table-bordered table-hover">
-                <thead class="table-secondary">
-                    <tr>
-                        <th>ID</th>
-                        <th>GP Name</th>
-                        <th>Block</th>
-                        <th>District</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.map(g => `
-                        <tr>
-                            <td>${g.id}</td>
-                            <td>${g.name}</td>
-                            <td>${g.blocks.name}</td>
-                            <td>${g.blocks.districts.name}</td>
-                        </tr>
-                    `).join("")}
-                </tbody>
-            </table>
-        `;
-    }
-
-    content.innerHTML = tableHTML;
 }
 
-// Load Districts by default
-loadMasterData("districts");
 
 
 
