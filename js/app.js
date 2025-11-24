@@ -52,16 +52,15 @@ function setupEventListeners() {
     });
 
     // MASTER TAB SWITCHING
-    document.querySelectorAll('[data-master]').forEach(tab => {
+    document.querySelectorAll('#masterTabs .nav-link').forEach(tab => {
       tab.addEventListener('click', async () => {
 
         // Remove active class from all master tabs
-        document.querySelectorAll('[data-master]').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('#masterTabs .nav-link').forEach(t => t.classList.remove('active'));
         // Add active class to clicked tab
         tab.classList.add('active');
 
-        const type = tab.getAttribute('data-master');
-        // Load corresponding master data
+        const selected = this.dataset.master;
         loadMasterTable(type);
       });
     });
@@ -404,96 +403,131 @@ async function loadDashboardData() {
     }
 }
 
-// Load master data table
-async function loadMasterTable(type) {
-  const container = document.getElementById('masterContent');
-  container.innerHTML = '<p>Loading...</p>';
+// ---------------------------
+// MASTER DATA TAB HANDLER
+// ---------------------------
 
-  let tableHtml = '';
-  let data = [];
+document.querySelectorAll('#masterTabs .nav-link').forEach(tab => {
+    tab.addEventListener('click', async function () {
+        document.querySelector('#masterTabs .nav-link.active').classList.remove('active');
+        this.classList.add('active');
 
-  if (type === 'districts') {
-    let { data: rows } = await supabase
-    .from('districts')
-    .select('*')
-    .order('name');
-    data = rows;
+        const selected = this.dataset.master;
+        loadMasterData(selected);
+    });
+});
 
-    tableHtml = `
-    <button class="btn btn-success mb-2" onclick="exportMasterCSV('districts')">Export CSV</button>
-    <div class="table-responsive">
-    <table class="table table-bordered table-striped">
-      <thead><tr><th>ID</th><th>Name</th></tr></thead>
-      <tbody>
-       ${rows.map(r => `
-        <tr>
-          <td>${r.id}</td>
-          <td>${r.name}</td>
-        </tr>
-        `).join('')}
-      </tbody>
-    </table>
-    </div>
-    `;
-  }
+async function loadMasterData(type) {
+    const content = document.getElementById("masterContent");
+    content.innerHTML = `<p class='text-center text-muted'>Loading...</p>`;
 
-  else if (type === 'blocks') {
-    let { data: rows } = await supabase
-    .from('blocks')
-    .select('*, districts(name)')
-    .order('name');
+    let tableHTML = "";
 
-    data = rows;
+    if (type === "districts") {
+        const { data, error } = await supabase.from("districts").select("*").order("id");
 
-    tableHtml += `
-    <button class="btn btn-success mb-2" onclick="exportMasterCSV('blocks')">Export CSV</button>
-    <div class="table-responsive">
-    table class="table table-bordered table-striped">
-      <thead><tr><th>ID</th><th>Name</th><th>District</th></tr></thead>
-      <tbody>
-        ${rows.map(r => `
-        <tr>
-          <td>${r.id}</td>
-          <td>${r.districts.name}</td>
-          <td>${r.name}</td>
-        </tr>
-        `).join('')}
-      </tbody>
-    </table>
-    </div>
-    `;
-  }
+        if (error) {
+            content.innerHTML = "<p class='text-danger'>Failed to load districts</p>";
+            return;
+        }
 
-  else if (type === 'gps') {
-    let { data: rows } = await supabase
-      .from('gps')
-      .select('*, blocks(name, districts(name))')
-      .order('name');
+        tableHTML = `
+            <h4>District List</h4>
+            <table class="table table-bordered table-hover">
+                <thead class="table-secondary">
+                    <tr>
+                        <th>ID</th>
+                        <th>District Name</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(d => `
+                        <tr>
+                            <td>${d.id}</td>
+                            <td>${d.name}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        `;
+    }
 
-    data = rows;
+    if (type === "blocks") {
+        const { data, error } = await supabase
+            .from("blocks")
+            .select("id, name, district_id, districts(name)")
+            .order("id");
 
-    tableHtml += `
-    <button class="btn btn-success mb-2" onclick="exportMasterCSV('gps')">Export CSV</button>
-    <div class="table-responsive">
-    <table class="table table-bordered table-striped">
-      <thead><tr><th>ID</th><th>District</th><th>Block</th><th>GP</th></tr></thead>
-      <tbody>
-        ${rows.map(r => `
-        <tr>
-          <td>${r.id}</td>
-          <td>${r.blocks.districts.name}</td>
-          <td>${r.blocks.name}</td>
-          <td>${r.name}</td>
-        </tr>
-        `).join('')}
-      </tbody>
-    </table>
-    </div>
-    `;
-  }
+        if (error) {
+            content.innerHTML = "<p class='text-danger'>Failed to load blocks</p>";
+            return;
+        }
 
-  container.innerHTML = tableHtml || '<p>No data found.</p>';
+        tableHTML = `
+            <h4>Block List</h4>
+            <table class="table table-bordered table-hover">
+                <thead class="table-secondary">
+                    <tr>
+                        <th>ID</th>
+                        <th>Block Name</th>
+                        <th>District</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(b => `
+                        <tr>
+                            <td>${b.id}</td>
+                            <td>${b.name}</td>
+                            <td>${b.districts.name}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        `;
+    }
+
+    if (type === "gps") {
+        const { data, error } = await supabase
+            .from("gps")
+            .select("id, name, block_id, blocks(name, districts(name))")
+            .order("id");
+
+        if (error) {
+            content.innerHTML = "<p class='text-danger'>Failed to load GPs</p>";
+            return;
+        }
+
+        tableHTML = `
+            <h4>GP List</h4>
+            <table class="table table-bordered table-hover">
+                <thead class="table-secondary">
+                    <tr>
+                        <th>ID</th>
+                        <th>GP Name</th>
+                        <th>Block</th>
+                        <th>District</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(g => `
+                        <tr>
+                            <td>${g.id}</td>
+                            <td>${g.name}</td>
+                            <td>${g.blocks.name}</td>
+                            <td>${g.blocks.districts.name}</td>
+                        </tr>
+                    `).join("")}
+                </tbody>
+            </table>
+        `;
+    }
+
+    content.innerHTML = tableHTML;
 }
+
+// Load Districts by default
+loadMasterData("districts");
+
 
 
 // Save employee function
