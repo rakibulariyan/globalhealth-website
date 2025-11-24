@@ -50,7 +50,21 @@ function setupEventListeners() {
             navigateToSection(link.getAttribute('data-section'));
         }
     });
-    
+
+    // MASTER TAB SWITCHING
+    document.querySelectorAll('[data-master]').forEach(tab => {
+      tab.addEventListener('click', async () => {
+
+        // Remove active class from all master tabs
+        document.querySelectorAll('[data-master]').forEach(t => t.classList.remove('active'));
+        // Add active class to clicked tab
+        tab.classList.add('active');
+
+        const type = tab.getAttribute('data-master');
+        // Load corresponding master data
+        loadMasterTable(type);
+      });
+    });
     // Employee management
     document.getElementById('saveEmployeeBtn').addEventListener('click', saveEmployee);
     
@@ -166,12 +180,64 @@ async function handleLogin(e) {
     console.error('Login failed:', error);
     alert('Login failed: ' + (error.message || JSON.stringify(error)));
 
+
     // Helpful hint for common scenario
     if (error && error.message && error.message.toLowerCase().includes('invalid')) {
       alert('Please make sure:\n1. User exists in Supabase Authentication\n2. Email and password are correct\n3. User is confirmed (not just invited)');
     }
   }
 }
+// Export master data to CSV
+async function exportMasterCSV(type) {
+    let rows = [];
+
+    if (type === 'districts') {
+        let { data } = await supabase.from('districts').select('*');
+        rows = data;
+    }
+
+    if (type === 'blocks') {
+        let { data } = await supabase
+            .from('blocks')
+            .select('id, name, districts(name)');
+        rows = data.map(r => ({
+            id: r.id,
+            district: r.districts.name,
+            block: r.name
+        }));
+    }
+
+    if (type === 'gps') {
+        let { data } = await supabase
+            .from('gps')
+            .select('id, name, blocks(name, districts(name))');
+
+        rows = data.map(r => ({
+            id: r.id,
+            district: r.blocks.districts.name,
+            block: r.blocks.name,
+            gp: r.name
+        }));
+    }
+
+    // Convert rows to CSV
+    const csvRows = [];
+    const headers = Object.keys(rows[0]);
+    csvRows.push(headers.join(','));
+
+    rows.forEach(row => {
+        csvRows.push(headers.map(h => `"${row[h]}"`).join(','));
+    });
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${type}.csv`;
+    a.click();
+}
+
 
 // UI update function (must be defined outside handleLogin)
 function updateUIForRole() {
@@ -337,6 +403,88 @@ async function loadDashboardData() {
         document.getElementById('dashboardStats').innerHTML = '<div class="col-12"><div class="alert alert-danger">Error loading dashboard data</div></div>';
     }
 }
+
+async function loadMasterTable(type) {
+  const container = document.getElementById('masterContent');
+  container.innerHTML = '<p>Loading...</p>';
+
+  let tableHtml = '';
+  let data = [];
+
+  if (type === 'districts') {
+    let { data: rows } = await supabase.from('districts').select('*').order('name');
+    data = rows || [];
+
+    tableHtml = `
+    <button class="btn btn-success mb-2" onclick="exportMasterCSV('districts')">Export CSV</button>
+    <table class="table table-bordered">
+      <thead><tr><th>ID</th><th>Name</th></tr></thead>
+      <tbody>
+       ${rows.map(r => `
+        <tr>
+          <td>${r.id}</td>
+          <td>${r.name}</td>
+        </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    `;
+  }
+
+  else if (type === 'blocks') {
+    let { data: rows } = await supabase
+    .from('blocks')
+    .select('*, districts(name)')
+    .order('name');
+
+    data = rows;
+
+    tableHtml += `
+    <button class="btn btn-success mb-2" onclick="exportMasterCSV('blocks')">Export CSV</button>
+    <table class="table table-bordered">
+      <thead><tr><th>ID</th><th>Name</th><th>District</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `
+        <tr>
+          <td>${r.id}</td>
+          <td>${r.districts.name}</td>
+          <td>${r.name}</td>
+        </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    `;
+  }
+
+  else if (type === 'gps') {
+    let { data: rows } = await supabase
+      .from('gps')
+      .select('*, blocks(name, districts(name))')
+      .order('name');
+
+    data = rows;
+
+    tableHtml += `
+    <button class="btn btn-success mb-2" onclick="exportMasterCSV('gps')">Export CSV</button>
+    <table class="table table-bordered">
+      <thead><tr><th>ID</th><th>District</th><th>Block</th><th>GP</th></tr></thead>
+      <tbody>
+        ${rows.map(r => `
+        <tr>
+          <td>${r.id}</td>
+          <td>${r.blocks.districts.name}</td>
+          <td>${r.blocks.name}</td>
+          <td>${r.name}</td>
+        </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    `;
+  }
+
+  container.innerHTML = tableHtml || '<p>No data found.</p>';
+}
+
 
 // Save employee function
 async function saveEmployee() {
