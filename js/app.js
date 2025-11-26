@@ -881,9 +881,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // When Employee modal opens we will populate districts
   $('#addEmployeeModal').on('show.bs.modal', async function () {
     await loadDistrictOptions('empDistrict', true);
-    document.getElementById('empBlock').innerHTML = '<option value="">Select Block</opt>';
+    document.getElementById('empBlock').innerHTML = '<option value="">Select Block</option>';
     document.getElementById('empBlock').disabled = true;
-    document.getElementById('empGP').innerHTML = '<option value="">Select GP</opt>';
+    document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
     document.getElementById('empGP').disabled = true;
   });
 
