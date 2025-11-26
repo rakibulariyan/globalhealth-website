@@ -582,7 +582,7 @@ window.saveMember = async function () {
     const contact = document.getElementById('memberContact').value.trim();
     const alternate = document.getElementById('memberAlternate').value.trim();
     const clinical = document.getElementById('memberClinical').value.trim();
-    const district = document.getElementById('memberDistrict').value;
+    const district = document.getElementById('memberDistrictId').value;
     const state = document.getElementById('memberState').value;
     const address = document.getElementById('memberAddress').value.trim();
     const nominee = document.getElementById('memberNominee').value.trim();
@@ -1139,8 +1139,7 @@ window.editMember = async function (id) {
     document.getElementById('memberContact').value = member.contact_number || '';
     document.getElementById('memberAlternate').value = member.alternate_number || '';
     document.getElementById('memberClinical').value = member.clinical_history || '';
-    document.getElementById('memberDistrict').value = member.district || '';
-    document.getElementById('memberState').value = member.state || 'Assam';
+    document.getElementById('memberDistrictId').value = member.district || '';
     document.getElementById('memberAddress').value = member.full_address || member.address || '';
     document.getElementById('memberNominee').value = member.nominee_name || member.nominee || '';
 
@@ -1163,7 +1162,7 @@ window.editMember = async function (id) {
           contact_number: document.getElementById('memberContact').value.trim(),
           alternate_number: document.getElementById('memberAlternate').value.trim(),
           clinical_history: document.getElementById('memberClinical').value.trim(),
-          district: document.getElementById('memberDistrict').value,
+          district: document.getElementById('memberDistrictId').value,
           state: document.getElementById('memberState').value,
           full_address: document.getElementById('memberAddress').value.trim(),
           nominee_name: document.getElementById('memberNominee').value.trim(),
