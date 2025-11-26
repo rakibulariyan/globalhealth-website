@@ -896,27 +896,41 @@ async function loadGpOptions(selectId, blockId, includeBlank = true) {
 /* Hook up change events - Employee modal */
 document.addEventListener('DOMContentLoaded', () => {
   // When Employee modal opens we will populate districts
-  $('#addEmployeeModal').on('show.bs.modal', async function () {
-    await loadDistrictOptions('empDistrict', true);
-    document.getElementById('empBlock').innerHTML = '<option value="">Select Block</option>';
-    document.getElementById('empBlock').disabled = true;
+// ========== EMPLOYEE MODAL CASCADE (CORRECTED) ==========
+$('#addEmployeeModal').on('show.bs.modal', async function () {
+  await loadDistrictOptions('empDistrict', true);
+  document.getElementById('empBlock').innerHTML = '<option value="">Select Block</option>';
+  document.getElementById('empBlock').disabled = true;
+  document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
+  document.getElementById('empGP').disabled = true;
+});
+
+// District changed → Load Blocks
+document.getElementById('empDistrict')?.addEventListener('change', async function () {
+  const d = this.value;
+  console.log('Employee District selected:', d);
+  await loadBlockOptions('empBlock', d, true);
+  document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
+  document.getElementById('empGP').disabled = true;
+});
+
+// ✅ BLOCK CHANGED → LOAD GPS (THIS WAS MISSING!)
+document.getElementById('empBlock')?.addEventListener('change', async function () {
+  const b = this.value;
+  console.log('Employee Block selected:', b);
+  if (b) {
+    await loadGpOptions('empGP', b, true);
+  } else {
     document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
     document.getElementById('empGP').disabled = true;
-  });
+  }
+});
 
-  // District -> Blocks
-  document.getElementById('empDistrict')?.addEventListener('change', async function () {
-    const dId = this.value;
-    await loadBlockOptions('empBlock', dId, true);
-    document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
-    document.getElementById('empGP').disabled = true;
-  });
+// Save Employee button
+document.getElementById('saveEmployeeBtn')?.addEventListener('click', async function() {
+  await saveEmployee();
+});
 
-  // Block -> GPs
-  document.getElementById('empBlock')?.addEventListener('change', async function () {
-    const bId = this.value;
-    await loadGpOptions('empGP', bId, true);
-  });
 
   // Role based validation visual for employee modal
   document.getElementById('empRole')?.addEventListener('change', function () {
@@ -941,35 +955,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Save Employee button click
-  document.getElementById('saveEmployeeBtn')?.addEventListener('click', async function () {
-    await saveEmployee();
-  });
+// ========== MEMBER MODAL CASCADE (CORRECTED) ==========
+$('#addMemberModal').on('show.bs.modal', async function () {
+  await loadDistrictOptions('memberDistrictId', true);
+  document.getElementById('memberBlockId').innerHTML = '<option value="">Select Block</option>';
+  document.getElementById('memberBlockId').disabled = true;
+  document.getElementById('memberGpId').innerHTML = '<option value="">Select GP</option>';
+  document.getElementById('memberGpId').disabled = true;
+});
 
-  // Member modal hooks
-  $('#addMemberModal').on('show.bs.modal', async function () {
-    await loadDistrictOptions('memberDistrictId', true);
-    document.getElementById('memberBlockId').innerHTML = '<option value="">Select Block</option>';
-    document.getElementById('memberBlockId').disabled = true;
+// District changed → Load Blocks
+document.getElementById('memberDistrictId')?.addEventListener('change', async function () {
+  const d = this.value;
+  console.log('Member District selected:', d);
+  await loadBlockOptions('memberBlockId', d, true);
+  document.getElementById('memberGpId').innerHTML = '<option value="">Select GP</option>';
+  document.getElementById('memberGpId').disabled = true;
+});
+
+// ✅ BLOCK CHANGED → LOAD GPS (THIS WAS MISSING!)
+document.getElementById('memberBlockId')?.addEventListener('change', async function () {
+  const b = this.value;
+  console.log('Member Block selected:', b);
+  if (b) {
+    await loadGpOptions('memberGpId', b, true);
+  } else {
     document.getElementById('memberGpId').innerHTML = '<option value="">Select GP</option>';
     document.getElementById('memberGpId').disabled = true;
-  });
+  }
+});
 
-    document.getElementById('memberDistrictId')?.addEventListener('change', async function () {
-    const d = this.value;
-    await loadBlockOptions('memberBlockId', d, true);
-    document.getElementById('memberGpId').innerHTML = '<option value="">Select GP</option>';
-    document.getElementById('memberGpId').disabled = true;
+// Save Member button
+document.getElementById('saveMemberBtn')?.addEventListener('click', async function() {
+  await saveMember();
+});
 
-
-    
-
-  });
-
-  // Save Member
-  document.getElementById('saveMemberBtn')?.addEventListener('click', async function () {
-    await saveMember();
-  });
 
   // If you added edit modals, wire them similarly:
   // $('#editMemberModal').on('show.bs.modal', ...) etc. and use editDistrictId/editBlockId/editGpId
