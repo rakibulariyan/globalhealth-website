@@ -938,16 +938,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('memberGpId').disabled = true;
   });
 
-  document.getElementById('memberDistrictId')?.addEventListener('change', async function () {
+    document.getElementById('memberDistrictId')?.addEventListener('change', async function () {
     const d = this.value;
     await loadBlockOptions('memberBlockId', d, true);
     document.getElementById('memberGpId').innerHTML = '<option value="">Select GP</option>';
     document.getElementById('memberGpId').disabled = true;
-  });
 
-  document.getElementById('memberBlockId')?.addEventListener('change', async function () {
-    const b = this.value;
-    await loadGpOptions('memberGpId', b, true);
+
+    
+
   });
 
   // Save Member
