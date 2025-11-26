@@ -824,6 +824,240 @@ async function loadProfile() {
     // Placeholder
 }
 
+/* ---------- Cascading selects & form handlers for Employee & Member ---------- */
+/* Requires: supabase global client, master tables populated */
+
+async function loadDistrictOptions(selectId, includeBlank = true) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.innerHTML = includeBlank ? '<option value="">Select District</option>' : '';
+  const { data, error } = await supabase.from('districts').select('id,name').order('name');
+  if (error) {
+    console.error('Failed to load districts', error);
+    return;
+  }
+  data.forEach(d => {
+    const opt = document.createElement('option');
+    opt.value = d.id;
+    opt.textContent = d.name;
+    select.appendChild(opt);
+  });
+}
+
+async function loadBlockOptions(selectId, districtId, includeBlank = true) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.innerHTML = includeBlank ? '<option value="">Select Block</option>' : '';
+  if (!districtId) { select.disabled = true; return; }
+  const { data, error } = await supabase.from('blocks').select('id,name').eq('district_id', districtId).order('name');
+  if (error) { console.error('Failed to load blocks', error); select.disabled = true; return; }
+  data.forEach(b => {
+    const opt = document.createElement('option');
+    opt.value = b.id;
+    opt.textContent = b.name;
+    select.appendChild(opt);
+  });
+  select.disabled = false;
+}
+
+async function loadGpOptions(selectId, blockId, includeBlank = true) {
+  const select = document.getElementById(selectId);
+  if (!select) return;
+  select.innerHTML = includeBlank ? '<option value="">Select GP</option>' : '';
+  if (!blockId) { select.disabled = true; return; }
+  const { data, error } = await supabase.from('gps').select('id,name').eq('block_id', blockId).order('name');
+  if (error) { console.error('Failed to load gps', error); select.disabled = true; return; }
+  data.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.id;
+    opt.textContent = g.name;
+    select.appendChild(opt);
+  });
+  select.disabled = false;
+}
+
+/* Hook up change events - Employee modal */
+document.addEventListener('DOMContentLoaded', () => {
+  // When Employee modal opens we will populate districts
+  $('#addEmployeeModal').on('show.bs.modal', async function () {
+    await loadDistrictOptions('empDistrict', true);
+    document.getElementById('empBlock').innerHTML = '<option value="">Select Block</opt>';
+    document.getElementById('empBlock').disabled = true;
+    document.getElementById('empGP').innerHTML = '<option value="">Select GP</opt>';
+    document.getElementById('empGP').disabled = true;
+  });
+
+  // District -> Blocks
+  document.getElementById('empDistrict')?.addEventListener('change', async function () {
+    const dId = this.value;
+    await loadBlockOptions('empBlock', dId, true);
+    document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
+    document.getElementById('empGP').disabled = true;
+  });
+
+  // Block -> GPs
+  document.getElementById('empBlock')?.addEventListener('change', async function () {
+    const bId = this.value;
+    await loadGpOptions('empGP', bId, true);
+  });
+
+  // Role based validation visual for employee modal
+  document.getElementById('empRole')?.addEventListener('change', function () {
+    const role = this.value;
+    const districtEl = document.getElementById('empDistrict');
+    const blockEl = document.getElementById('empBlock');
+    const gpEl = document.getElementById('empGP');
+
+    // Option C: coordinators required, GP workers require gp
+    if (role === 'coordinator') {
+      districtEl.required = true;
+      blockEl.required = false;
+      gpEl.required = false;
+    } else if (role === 'health_worker') {
+      districtEl.required = true;
+      blockEl.required = true;
+      gpEl.required = true;
+    } else {
+      districtEl.required = false;
+      blockEl.required = false;
+      gpEl.required = false;
+    }
+  });
+
+  // Save Employee button click
+  document.getElementById('saveEmployeeBtn')?.addEventListener('click', async function () {
+    await saveEmployee();
+  });
+
+  // Member modal hooks
+  $('#addMemberModal').on('show.bs.modal', async function () {
+    await loadDistrictOptions('memberDistrictId', true);
+    document.getElementById('memberBlockId').innerHTML = '<option value="">Select Block</option>';
+    document.getElementById('memberBlockId').disabled = true;
+    document.getElementById('memberGpId').innerHTML = '<option value="">Select GP</option>';
+    document.getElementById('memberGpId').disabled = true;
+  });
+
+  document.getElementById('memberDistrictId')?.addEventListener('change', async function () {
+    const d = this.value;
+    await loadBlockOptions('memberBlockId', d, true);
+    document.getElementById('memberGpId').innerHTML = '<option value="">Select GP</option>';
+    document.getElementById('memberGpId').disabled = true;
+  });
+
+  document.getElementById('memberBlockId')?.addEventListener('change', async function () {
+    const b = this.value;
+    await loadGpOptions('memberGpId', b, true);
+  });
+
+  // Save Member
+  document.getElementById('saveMemberBtn')?.addEventListener('click', async function () {
+    await saveMember();
+  });
+
+  // If you added edit modals, wire them similarly:
+  // $('#editMemberModal').on('show.bs.modal', ...) etc. and use editDistrictId/editBlockId/editGpId
+});
+
+/* ---------- Save handlers ---------- */
+
+async function saveEmployee() {
+  const name = document.getElementById('empName')?.value?.trim();
+  const email = document.getElementById('empEmail')?.value?.trim();
+  const phone = document.getElementById('empPhone')?.value?.trim();
+  const role = document.getElementById('empRole')?.value;
+  const password = document.getElementById('empPassword')?.value;
+  const address = document.getElementById('empAddress')?.value?.trim();
+  const district_id = document.getElementById('empDistrict')?.value || null;
+  const block_id = document.getElementById('empBlock')?.value || null;
+  const gp_id = document.getElementById('empGP')?.value || null;
+
+  // Basic validation
+  if (!name || !email || !phone) {
+    alert('Please fill name, email and phone');
+    return;
+  }
+
+  // Enforce hybrid policy: coordinators & gp workers required fields
+  if (role === 'coordinator' && !district_id) {
+    alert('Coordinator must be assigned a district');
+    return;
+  }
+  if (role === 'health_worker' && (!district_id || !block_id || !gp_id)) {
+    alert('Health worker must be assigned district, block and GP');
+    return;
+  }
+
+  try {
+    // create employee account row in employees table; you might also want to create auth user in Supabase Auth if needed
+    const payload = {
+      name, email, phone, role, address,
+      district_id: district_id ? Number(district_id) : null,
+      block_id: block_id ? Number(block_id) : null,
+      gp_id: gp_id ? Number(gp_id) : null,
+      created_at: new Date()
+    };
+
+    const { data, error } = await supabase.from('employees').insert([payload]);
+    if (error) throw error;
+    // close modal and refresh employees UI (if you have employees list)
+    $('#addEmployeeModal').modal('hide');
+    showToast('Employee created');
+    // optionally refresh employees table list function
+    if (typeof loadEmployees === 'function') loadEmployees();
+  } catch (err) {
+    console.error(err);
+    alert(err.message || 'Failed to create employee');
+  }
+}
+
+async function saveMember() {
+  const name = document.getElementById('memberName')?.value?.trim();
+  const father_name = document.getElementById('memberFatherName')?.value?.trim();
+  const age = Number(document.getElementById('memberAge')?.value || 0);
+  const gender = document.getElementById('memberGender')?.value;
+  const aadhar = document.getElementById('memberAadhar')?.value?.trim();
+  const contact_number = document.getElementById('memberContact')?.value?.trim();
+  const district_id = document.getElementById('memberDistrictId')?.value || null;
+  const block_id = document.getElementById('memberBlockId')?.value || null;
+  const gp_id = document.getElementById('memberGpId')?.value || null;
+  const full_address = document.getElementById('memberAddress')?.value?.trim();
+  const payment_received = document.getElementById('paymentReceived')?.checked || false;
+
+  if (!name || !contact_number || !district_id || !block_id || !gp_id) {
+    alert('Please fill required fields and select District/Block/GP');
+    return;
+  }
+
+  try {
+    // get district name for legacy textual field
+    const { data: drows } = await supabase.from('districts').select('name').eq('id', district_id).single();
+    const district_text = drows ? drows.name : null;
+
+    const payload = {
+      member_id: null, // you can generate a member_id pattern on server or client; leaving null for now
+      name, father_name, age, gender, aadhar_number: aadhar, contact_number,
+      full_address, payment_received,
+      district: district_text,
+      district_id: district_id ? Number(district_id) : null,
+      block_id: block_id ? Number(block_id) : null,
+      gp_id: gp_id ? Number(gp_id) : null,
+      created_at: new Date()
+    };
+
+    const { data, error } = await supabase.from('members').insert([payload]);
+    if (error) throw error;
+
+    $('#addMemberModal').modal('hide');
+    showToast('Member registered');
+    if (typeof loadMembers === 'function') loadMembers();
+  } catch (err) {
+    console.error(err);
+    alert(err.message || 'Failed to register member');
+  }
+}
+
+
 // ==============================
 // DELETE MEMBER FUNCTION
 // ==============================
