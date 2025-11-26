@@ -991,9 +991,7 @@ document.getElementById('saveMemberBtn')?.addEventListener('click', async functi
 });
 
 
-  // If you added edit modals, wire them similarly:
-  // $('#editMemberModal').on('show.bs.modal', ...) etc. and use editDistrictId/editBlockId/editGpId
-});
+
 
 /* ---------- Save handlers ---------- */
 
@@ -1226,3 +1224,5 @@ window.editMember = async function (id) {
     alert('❌ Error loading member details.');
   }
 };
+}); // Close the DOMContentLoaded event listener
+
