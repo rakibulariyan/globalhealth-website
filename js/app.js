@@ -847,17 +847,34 @@ async function loadDistrictOptions(selectId, includeBlank = true) {
 async function loadBlockOptions(selectId, districtId, includeBlank = true) {
   const select = document.getElementById(selectId);
   if (!select) return;
+  
   select.innerHTML = includeBlank ? '<option value="">Select Block</option>' : '';
-  if (!districtId) { select.disabled = true; return; }
-  const { data, error } = await supabase.from('blocks').select('id,name').eq('district_id', districtId).order('name');
-  if (error) { console.error('Failed to load blocks', error); select.disabled = true; return; }
+  
+  if (!districtId) { 
+    select.disabled = true; 
+    return; 
+  }
+  
+  const { data, error } = await supabase
+    .from('blocks')
+    .select('id,name')
+    .eq('district_id', districtId)
+    .order('name');
+    
+  if (error) { 
+    console.error('Failed to load blocks', error); 
+    select.disabled = true; 
+    return; 
+  }
+  
   data.forEach(b => {
     const opt = document.createElement('option');
     opt.value = b.id;
     opt.textContent = b.name;
     select.appendChild(opt);
   });
-  select.disabled = false;
+  
+  select.disabled = false; // ✅ FIX: Enable the dropdown
 }
 
 async function loadGpOptions(selectId, blockId, includeBlank = true) {
