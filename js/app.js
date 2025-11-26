@@ -1057,6 +1057,44 @@ async function saveMember() {
   }
 }
 
+function applyLocationFilters(query, currentUser) {
+  if (!currentUser) return query;
+
+  if (currentUser.role === 'admin') {
+    return query;
+  }
+
+  if (currentUser.role === 'coordinator') {
+    return query.eq('district_id', currentUser.district_id);
+  }
+
+  if (currentUser.role === 'block_coordinator') {
+    return query.eq('block_id', currentUser.block_id);
+  }
+
+  if (currentUser.role === 'health_worker') {
+    return query.eq('gp_id', currentUser.gp_id);
+  }
+
+  return query.eq('id', -1);
+}
+
+async function loadMembersForCurrentUser(currentUser) {
+  let q = supabase.from('members').select('*');
+
+  q = applyLocationFilters(q, currentUser);
+
+  const { data, error } = await q.order('created_at', { ascending: false }).limit(200);
+
+  if (error) {
+    console.error('RBAC Query Failed:', error);
+    return [];
+  }
+
+  return data || [];
+}
+
+
 
 // ==============================
 // DELETE MEMBER FUNCTION
