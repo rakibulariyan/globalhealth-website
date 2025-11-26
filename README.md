@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="assets/img/logo.png" width="130" alt="Global Health Logo">
+<img src="assets/logo.png" width="130" alt="Global Health Logo">
 
 <h1><strong>Global Health Mission</strong></h1>
 <h3>Membership Management System</h3>
@@ -101,13 +101,13 @@ Built entirely with client-side technologies + Supabase backend.
 /
 ├─ index.html
 ├─ styles/
-│ └─ style.css
+│  └─ style.css
 ├─ js/
-│ ├─ supabase-config.js
-│ ├─ app.js
-│ └─ pdf-generator.js
+│  ├─ supabase-config.js
+│  ├─ app.js
+│  └─ pdf-generator.js
 ├─ assets/
-│ └─ images/logo.png
+│  └─ images/logo.png
 └─ README.md
 
 
