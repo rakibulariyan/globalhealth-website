@@ -1,4 +1,9 @@
 console.log('=== GLOBAL HEALTH APP LOADED ===');
+import { handleLogin as authLogin } from "../assets/js/modules/auth.js";
+import { checkAccess, showAccessDenied } from "../assets/js/core/permissions.js";
+import { checkAccess } from "./assets/js/core/permissions.js";
+import { getRole } from "../assets/js/core/session.js";
+
 
 // Current user and role
 let currentUser = null;
@@ -104,81 +109,53 @@ if (addFamilyBtn && familyBody) {
     document.getElementById('sendResetLink').addEventListener('click', sendPasswordReset);
 }
 
-// WORKING LOGIN FUNCTION - Uses Supabase Auth
+// Handle login form submission
 async function handleLogin(e) {
   e.preventDefault();
 
-  const email = document.getElementById('loginEmail').value;
-  const password = document.getElementById('loginPassword').value;
-
-  if (!email || !password) {
-    alert('Please enter both email and password');
-    return;
-  }
+  const email = document.getElementById("loginEmail").value;
+  const password = document.getElementById("loginPassword").value;
 
   try {
-    console.log('Attempting Supabase Auth login for:', email);
+      const { user, session } = await authLogin(email, password);
 
-    // Use Supabase Authentication
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password
-    });
+      if (!user) {
+        throw new Error("Invalid login");
+      }
 
-    if (error) {
-      console.error('Supabase Auth error:', error);
-      throw error;
-    }
+      console.log("Supabase Auth successful:", user);
 
-    if (!data || !data.user) {
-      throw new Error('No user found after authentication');
-    }
+      // --- Fetch role from employees table ---
+      const { data: emp, error: empErr } = await supabase
+          .from('employees')
+          .select('role,name,email')
+          .eq('email', email)
+          .single();
+        if (empErr) throw empErr;
+         currentUser = {
+         name: emp.name,
+         email: emp.email,
+         role: emp.role
+        };
+       currentRole = emp.role;
+      console.log("User role fetched:", currentRole);
+      // --- Update UI based on role ---
+      updateUIForRole();
+       showApp();
+       loadDashboardData();
 
-    console.log('Supabase Auth successful:', data.user);
-
-    // Now get employee details from database
-    const { data: employee, error: empError } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('email', email)
-      .single();
-
-    if (empError && empError.code !== 'PGRST116') { // PGRST116 can be "No rows" — still okay
-      console.warn('Warning fetching employee record:', empError);
-    }
-
-    // --- SET USER SESSION (important for RLS) ---
-    currentUser = {
-      id: data.user.id,
-      email: data.user.email,
-      name: employee?.name || 'User',
-      role: employee?.role || 'employee'
-    };
-    currentRole = employee?.role || 'employee';
-
-    console.log('Login successful:', currentUser);
-
-    // Update UI and show app
-    updateUIForRole();
-    showApp();
-    loadDashboardData();
-
-  } catch (error) {
-    console.error('Login failed:', error);
-    alert('Login failed: ' + (error.message || JSON.stringify(error)));
-
-
-    // Helpful hint for common scenario
-    if (error && error.message && error.message.toLowerCase().includes('invalid')) {
-      alert('Please make sure:\n1. User exists in Supabase Authentication\n2. Email and password are correct\n3. User is confirmed (not just invited)');
-    }
-  }
+      } catch (error) {
+      console.error("Login failed:", error);
+     alert("Login failed: " + error.message);
+  }  finally {
+    // Any cleanup or final steps can be added here
+  } 
 }
 
 
 
 // UI update function (must be defined outside handleLogin)
-function updateUIForRole() {
+ function updateUIForRole() {
   // Update user display (safe guards)
   if (currentUser && currentUser.name) {
     document.getElementById('userName').textContent = currentUser.name;
@@ -189,22 +166,8 @@ function updateUIForRole() {
     document.getElementById('dropdownUserName').textContent = 'User';
     document.getElementById('dropdownUserEmail').textContent = '';
   }
-
-  // Show/hide admin sections
-  document.querySelectorAll('.admin-only').forEach(el => {
-    el.style.display = (currentRole === 'admin') ? 'block' : 'none';
-  });
-
-  // Show/hide employee-admin sections
-  document.querySelectorAll('.employee-admin').forEach(el => {
-    el.style.display = (currentRole === 'admin' || currentRole === 'coordinator' || currentRole === 'health_worker') ? 'block' : 'none';
-  });
-
-  // Show/hide accountant sections
-  document.querySelectorAll('.accountant-only').forEach(el => {
-    el.style.display = (currentRole === 'admin' || currentRole === 'accountant') ? 'block' : 'none';
-  });
 }
+
 
 
 // Show main application
@@ -1225,4 +1188,17 @@ window.editMember = async function (id) {
   }
 };
 }); // Close the DOMContentLoaded event listener
+
+// =====================
+// RBAC — DASHBOARD MENU
+// =====================
+document.querySelector('[data-section="dashboard"]').addEventListener("click", () => {
+    const role = getRole();  // current user's role
+
+    if (!checkAccess("VIEW_DASHBOARD", role)) {
+        return; // Access Denied will show automatically
+    }
+
+    loadDashboardData(); // your existing dashboard loader
+});
 
