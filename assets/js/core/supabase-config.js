@@ -12,15 +12,13 @@ const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
-// ✅ Expose globally
+// Expose globally for old code
 window.supabase = supabase;
+
+// Export for ES module imports (NEW)
+export { supabase };
 
 console.log("Supabase initialized with Auth session support");
 
-// ✅ Keep session refreshed & active
-supabase.auth.onAuthStateChange((event, session) => {
-  console.log("Auth state changed:", event);
-  if (session) {
-    console.log("Authenticated as:", session.user.email);
-  }
-});
+
+
