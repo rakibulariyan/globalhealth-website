@@ -21,17 +21,17 @@ async function initializeApp() {
     setupEventListeners();
 
     // ✅ Keep user logged in even after refresh
-const { data: { session } } = await supabase.auth.getSession();
+    const { data: { session } } = await supabase.auth.getSession();
 
-if (session && session.user) {
-  currentUser = session.user;
-  showApp();              // show dashboard
-  updateUIForRole();      // adjust based on role
-  loadDashboardData();    // load data again
-  console.log("✅ Session restored:", session.user.email);
-} else {
-  showLogin();            // show login page if no session
-}
+    if (session && session.user) {
+        currentUser = session.user;
+        showApp();              // show dashboard
+        updateUIForRole();      // adjust based on role
+        loadDashboardData();    // load data again
+        console.log("✅ Session restored:", session.user.email);
+    } else {
+        showLogin();            // show login page if no session
+    }
 }
 
 // Setup all event listeners
@@ -51,57 +51,213 @@ function setupEventListeners() {
         }
     });
 
-    
     // Employee management
     document.getElementById('saveEmployeeBtn').addEventListener('click', saveEmployee);
     
     // Member management
     document.getElementById('saveMemberBtn').addEventListener('click', saveMember);
 
-    // ✅ Add Family Member button logic
-const addFamilyBtn = document.getElementById('addFamilyBtn');
-const familyBody = document.getElementById('familyBody');
+    // Family member functionality
+    setupFamilyMemberHandlers();
 
-if (addFamilyBtn && familyBody) {
-  addFamilyBtn.addEventListener('click', () => {
-    // Limit to 4 members
-    if (familyBody.children.length >= 4) {
-      alert("You can only add up to 4 family members.");
-      return;
-    }
-
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><input type="text" class="form-control fam-name" placeholder="Name" required></td>
-      <td><input type="number" class="form-control fam-age" placeholder="Age" required></td>
-      <td>
-        <select class="form-control fam-relation" required>
-          <option value="">Select</option>
-          <option value="Spouse">Spouse</option>
-          <option value="Father">Father</option>
-          <option value="Mother">Mother</option>
-          <option value="Brother">Brother</option>
-          <option value="Sister">Sister</option>
-        </select>
-      </td>
-      <td class="text-center">
-        <button type="button" class="btn btn-sm btn-danger removeFam">×</button>
-      </td>
-    `;
-    familyBody.appendChild(tr);
-
-    // remove row button
-    tr.querySelector('.removeFam').addEventListener('click', () => tr.remove());
-  });
-}
     // Member search
-
     document.getElementById('memberSearch').addEventListener('input', searchMembers);
     
     // Forgot password
     document.getElementById('forgotPasswordLink').addEventListener('click', showForgotPassword);
     document.getElementById('backToLogin').addEventListener('click', showLoginForm);
     document.getElementById('sendResetLink').addEventListener('click', sendPasswordReset);
+    
+    // Setup cascade dropdowns
+    setupCascadeDropdowns();
+}
+
+// Setup cascade dropdown functionality
+function setupCascadeDropdowns() {
+    // Employee Modal Cascade
+    $('#addEmployeeModal').on('show.bs.modal', async function () {
+        await loadDistrictOptions('empDistrict', true);
+        document.getElementById('empBlock').innerHTML = '<option value="">Select Block</option>';
+        document.getElementById('empBlock').disabled = true;
+        document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
+        document.getElementById('empGP').disabled = true;
+    });
+
+    // Employee District Changed
+    document.getElementById('empDistrict')?.addEventListener('change', async function () {
+        const districtId = this.value;
+        await loadBlockOptions('empBlock', districtId, true);
+        document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
+        document.getElementById('empGP').disabled = true;
+    });
+
+    // Employee Block Changed
+    document.getElementById('empBlock')?.addEventListener('change', async function () {
+        const blockId = this.value;
+        if (blockId) {
+            await loadGpOptions('empGP', blockId, true);
+        } else {
+            document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
+            document.getElementById('empGP').disabled = true;
+        }
+    });
+
+    // Member Modal Cascade
+    $('#addMemberModal').on('show.bs.modal', async function () {
+        await loadDistrictOptions('memberDistrictId', true);
+        document.getElementById('memberBlockId').innerHTML = '<option value="">Select Block</option>';
+        document.getElementById('memberBlockId').disabled = true;
+        document.getElementById('memberGPId').innerHTML = '<option value="">Select GP</option>';
+        document.getElementById('memberGPId').disabled = true;
+    });
+
+    // Member District Changed
+    document.getElementById('memberDistrictId')?.addEventListener('change', async function () {
+        const districtId = this.value;
+        await loadBlockOptions('memberBlockId', districtId, true);
+        document.getElementById('memberGPId').innerHTML = '<option value="">Select GP</option>';
+        document.getElementById('memberGPId').disabled = true;
+    });
+
+    // Member Block Changed
+    document.getElementById('memberBlockId')?.addEventListener('change', async function () {
+        const blockId = this.value;
+        if (blockId) {
+            await loadGpOptions('memberGPId', blockId, true);
+        } else {
+            document.getElementById('memberGPId').innerHTML = '<option value="">Select GP</option>';
+            document.getElementById('memberGPId').disabled = true;
+        }
+    });
+}
+
+// Separate function for family member handlers
+function setupFamilyMemberHandlers() {
+    const addFamilyBtn = document.getElementById('addFamilyBtn');
+    const familyBody = document.getElementById('familyBody');
+
+    if (addFamilyBtn && familyBody) {
+        addFamilyBtn.addEventListener('click', () => {
+            if (familyBody.children.length >= 4) {
+                alert("You can only add up to 4 family members.");
+                return;
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" class="form-control form-control-sm fam-name" placeholder="Name" required></td>
+                <td><input type="number" class="form-control form-control-sm fam-age" placeholder="Age" required min="1" max="120"></td>
+                <td>
+                    <select class="form-control form-control-sm fam-relation" required>
+                        <option value="">Select Relation</option>
+                        <option value="Spouse">Spouse</option>
+                        <option value="Father">Father</option>
+                        <option value="Mother">Mother</option>
+                        <option value="Son">Son</option>
+                        <option value="Daughter">Daughter</option>
+                        <option value="Brother">Brother</option>
+                        <option value="Sister">Sister</option>
+                    </select>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-danger removeFam">×</button>
+                </td>
+            `;
+            familyBody.appendChild(tr);
+
+            // Remove row button
+            tr.querySelector('.removeFam').addEventListener('click', () => tr.remove());
+        });
+    }
+}
+
+// ========== CASCADE DROPDOWN FUNCTIONS ==========
+
+async function loadDistrictOptions(selectId, includeBlank = true) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    
+    select.innerHTML = includeBlank ? '<option value="">Select District</option>' : '';
+    
+    try {
+        const { data, error } = await supabase
+            .from('districts')
+            .select('id, name')
+            .order('name');
+            
+        if (error) throw error;
+        
+        data.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.name;
+            select.appendChild(opt);
+        });
+    } catch (error) {
+        console.error('Failed to load districts:', error);
+    }
+}
+
+async function loadBlockOptions(selectId, districtId, includeBlank = true) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    
+    select.innerHTML = includeBlank ? '<option value="">Select Block</option>' : '';
+    select.disabled = true;
+    
+    if (!districtId) return;
+    
+    try {
+        const { data, error } = await supabase
+            .from('blocks')
+            .select('id, name')
+            .eq('district_id', districtId)
+            .order('name');
+            
+        if (error) throw error;
+        
+        data.forEach(b => {
+            const opt = document.createElement('option');
+            opt.value = b.id;
+            opt.textContent = b.name;
+            select.appendChild(opt);
+        });
+        
+        select.disabled = false;
+    } catch (error) {
+        console.error('Failed to load blocks:', error);
+    }
+}
+
+async function loadGpOptions(selectId, blockId, includeBlank = true) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    
+    select.innerHTML = includeBlank ? '<option value="">Select GP</option>' : '';
+    select.disabled = true;
+    
+    if (!blockId) return;
+    
+    try {
+        const { data, error } = await supabase
+            .from('gps')
+            .select('id, name')
+            .eq('block_id', blockId)
+            .order('name');
+            
+        if (error) throw error;
+        
+        data.forEach(g => {
+            const opt = document.createElement('option');
+            opt.value = g.id;
+            opt.textContent = g.name;
+            select.appendChild(opt);
+        });
+        
+        select.disabled = false;
+    } catch (error) {
+        console.error('Failed to load GPs:', error);
+    }
 }
 
 // WORKING LOGIN FUNCTION - Uses Supabase Auth
@@ -167,15 +323,12 @@ async function handleLogin(e) {
     console.error('Login failed:', error);
     alert('Login failed: ' + (error.message || JSON.stringify(error)));
 
-
     // Helpful hint for common scenario
     if (error && error.message && error.message.toLowerCase().includes('invalid')) {
       alert('Please make sure:\n1. User exists in Supabase Authentication\n2. Email and password are correct\n3. User is confirmed (not just invited)');
     }
   }
 }
-
-
 
 // UI update function (must be defined outside handleLogin)
 function updateUIForRole() {
@@ -205,7 +358,6 @@ function updateUIForRole() {
     el.style.display = (currentRole === 'admin' || currentRole === 'accountant') ? 'block' : 'none';
   });
 }
-
 
 // Show main application
 function showApp() {
@@ -342,41 +494,41 @@ async function loadDashboardData() {
     }
 }
 
-
-
-
 // Save employee function
 async function saveEmployee() {
-    const name = document.getElementById('empName').value;
-    const fatherName = document.getElementById('empFatherName').value;
-    const email = document.getElementById('empEmail').value;
-    const phone = document.getElementById('empPhone').value;
-    const role = document.getElementById('empRole').value;
-    const password = document.getElementById('empPassword').value;
-    const address = document.getElementById('empAddress').value;
-    
-    if (!name || !email || !phone || !role || !password) {
-        alert('Please fill all required fields');
-        return;
-    }
-    
     try {
+        const name = document.getElementById('empName')?.value?.trim();
+        const fatherName = document.getElementById('empFatherName')?.value?.trim();
+        const email = document.getElementById('empEmail')?.value?.trim();
+        const phone = document.getElementById('empPhone')?.value?.trim();
+        const role = document.getElementById('empRole')?.value;
+        const password = document.getElementById('empPassword')?.value;
+        const address = document.getElementById('empAddress')?.value?.trim();
+        const districtId = document.getElementById('empDistrict')?.value || null;
+        const blockId = document.getElementById('empBlock')?.value || null;
+        const gpId = document.getElementById('empGP')?.value || null;
+
+        // Validation
+        if (!name || !email || !phone || !role || !password) {
+            alert('Please fill all required fields');
+            return;
+        }
+
         // Generate employee ID
         const { data: lastEmployee } = await supabase
             .from('employees')
             .select('employee_id')
             .order('id', { ascending: false })
             .limit(1);
-            
+
         let nextId = 100;
         if (lastEmployee && lastEmployee.length > 0) {
             const lastId = parseInt(lastEmployee[0].employee_id.replace('E', ''));
             nextId = lastId + 1;
         }
-        
         const employeeId = 'E' + nextId.toString().padStart(4, '0');
-        
-        // Save employee
+
+        // Save to database
         const { error } = await supabase
             .from('employees')
             .insert([{
@@ -386,18 +538,22 @@ async function saveEmployee() {
                 email: email,
                 phone: phone,
                 role: role,
-                password: password,
-                address: address
+                password: password, // In production, hash this password
+                address: address,
+                district_id: districtId,
+                block_id: blockId,
+                gp_id: gpId
             }]);
-            
+
         if (error) throw error;
-        
+
         alert('Employee created successfully! Employee ID: ' + employeeId);
         $('#addEmployeeModal').modal('hide');
         document.getElementById('addEmployeeForm').reset();
-        loadEmployees();
-        
+        loadEmployees(); // Refresh the employee list
+
     } catch (error) {
+        console.error('Error creating employee:', error);
         alert('Error creating employee: ' + error.message);
     }
 }
@@ -506,7 +662,6 @@ window.editEmployee = async function(id) {
     // Change Save button temporarily into Update mode
     const saveBtn = document.getElementById('saveEmployeeBtn');
     const originalText = saveBtn.textContent;
-    const originalHandler = saveBtn.onclick;
 
     saveBtn.textContent = 'Update Employee';
     // remove existing onclick to avoid double-binding
@@ -536,7 +691,7 @@ window.editEmployee = async function(id) {
 
         // restore Save button state
         saveBtn.textContent = originalText;
-        saveBtn.onclick = originalHandler;
+        saveBtn.onclick = saveEmployee;
         saveBtn.removeEventListener('click', updateHandler);
 
         // reload table
@@ -582,15 +737,16 @@ window.saveMember = async function () {
     const contact = document.getElementById('memberContact').value.trim();
     const alternate = document.getElementById('memberAlternate').value.trim();
     const clinical = document.getElementById('memberClinical').value.trim();
-    const district = document.getElementById('memberDistrictId').value;
-    const state = document.getElementById('memberState').value;
+    const districtId = document.getElementById('memberDistrictId').value;
+    const blockId = document.getElementById('memberBlockId').value;
+    const gpId = document.getElementById('memberGPId').value;
     const address = document.getElementById('memberAddress').value.trim();
     const nominee = document.getElementById('memberNominee').value.trim();
     const paymentReceived = document.getElementById('paymentReceived').checked;
 
     // Basic validation
-    if (!name || !contact || !aadhar || !district || !address) {
-      alert('⚠️ Please fill all required fields (Name, Contact, Aadhaar, District, Address)');
+    if (!name || !contact || !aadhar || !districtId || !blockId || !gpId || !address) {
+      alert('⚠️ Please fill all required fields (Name, Contact, Aadhaar, District, Block, GP, Address)');
       return;
     }
 
@@ -643,6 +799,15 @@ window.saveMember = async function () {
       }
     });
 
+    // Get district name for display
+    const { data: districtData } = await supabase
+      .from('districts')
+      .select('name')
+      .eq('id', districtId)
+      .single();
+
+    const districtName = districtData ? districtData.name : '';
+
     // ✅ Insert main member data into Supabase
     const { data, error } = await supabase.from('members').insert([
       {
@@ -655,8 +820,10 @@ window.saveMember = async function () {
         contact_number: contact,
         alternate_number: alternate,
         clinical_history: clinical,
-        district,
-        state,
+        district: districtName,
+        district_id: districtId,
+        block_id: blockId,
+        gp_id: gpId,
         address,
         nominee,
         applicant_photo_url: applicant_url,
@@ -671,6 +838,25 @@ window.saveMember = async function () {
     if (error) throw error;
 
     alert(`✅ Member registered successfully! Member ID: ${memberId}`);
+
+    // ✅ Generate Member Card & Receipt PDF
+    if (typeof generateMemberPDF === 'function') {
+      generateMemberPDF({
+        name,
+        member_id: memberId,
+        age,
+        gender,
+        aadhar_number: aadhar,
+        contact_number: contact,
+        district: districtName,
+        join_date: new Date(),
+        expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
+        created_by: currentUser ? currentUser.name : "Admin",
+        applicant_photo_url: applicant_url
+      });
+    }
+
+    // ✅ Reset and close form
     $('#addMemberModal').modal('hide');
     document.getElementById('addMemberForm').reset();
     document.getElementById('familyBody').innerHTML = ''; // clear family table
@@ -681,32 +867,6 @@ window.saveMember = async function () {
     alert('Error registering member: ' + err.message);
   }
 };
-
-    if (error) throw error;
-
-    alert(`✅ Member registered successfully! Member ID: ${memberId}`);
-
-    // ✅ Generate Member Card & Receipt PDF //
-    generateMemberPDF({
-      name,
-      member_id: memberId,
-      age,
-      gender,
-      aadhar_number: aadhar,
-      contact_number: contact,
-      district,
-      join_date: new Date(),
-      expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-      created_by: currentUser ? currentUser.name : "Admin",
-      applicant_photo_url: applicant_url
-    });
-
-    // ✅ Reset and close form
-    $('#addMemberModal').modal('hide');
-    document.getElementById('addMemberForm').reset();
-    document.getElementById('familyBody').innerHTML = ''; // clear family table
-    loadMembers();
-
 
 window.searchMembers = function() {
     const searchTerm = document.getElementById('memberSearch').value.toLowerCase();
@@ -743,10 +903,10 @@ async function loadMembers() {
         <td>${mem.member_id}</td>
         <td>${mem.name}</td>
         <td>${mem.father_name || ''}</td>
-        <td>${mem.age || ''}</td>
-        <td>${mem.gender || ''}</td>
         <td>${mem.contact_number}</td>
         <td>${mem.district}</td>
+        <td>${mem.join_date ? new Date(mem.join_date).toLocaleDateString() : ''}</td>
+        <td>${mem.expiry_date ? new Date(mem.expiry_date).toLocaleDateString() : ''}</td>
         <td>${mem.status || 'active'}</td>
         <td>
           <button class="btn btn-sm btn-outline-primary" onclick="editMember('${mem.id}')"><i class="fas fa-edit"></i></button>
@@ -761,374 +921,6 @@ async function loadMembers() {
       '<tr><td colspan="9" class="text-center text-danger">Error loading members</td></tr>';
   }
 }
-
-
-// === Update Member ===
-document.getElementById('updateMemberBtn').addEventListener('click', async () => {
-  // ✅ Step 1: Collect updated family members
-const updatedFamily = [];
-document.querySelectorAll("#familyBody tr").forEach(row => {
-  const name = row.querySelector(".fam-name")?.value.trim();
-  const age = parseInt(row.querySelector(".fam-age")?.value.trim(), 10);
-  const relation = row.querySelector(".fam-relation")?.value;
-  if (name && age && relation) {
-    updatedFamily.push({ name, age, relation });
-  }
-});
-// ✅ Prevent more than 4 family members
-if (updatedFamily.length > 4) {
-  alert("You can only keep up to 4 family members.");
-  return;
-}
-
-  // ✅ Step 2: Collect other updated fields
-  const id = document.getElementById('editMemberId').value;
-
-  const updates = {
-    name: document.getElementById('editMemberName').value,
-    father_name: document.getElementById('editFatherName').value,
-    age: parseInt(document.getElementById('editAge').value),
-    gender: document.getElementById('editGender').value,
-    aadhar_number: document.getElementById('editAadhar').value,
-    contact_number: document.getElementById('editContact').value,
-    district: document.getElementById('editDistrict').value,
-    full_address: document.getElementById('editAddress').value,
-    status: document.getElementById('editStatus').value,
-    family_members: updatedFamily,
-    updated_at: new Date().toISOString()
-  };
-
-  
-  try {
-    const { error } = await supabase.from('members').update(updates).eq('id', id);
-    if (error) throw error;
-
-    alert('✅ Member updated successfully!');
-    $('#editMemberModal').modal('hide');
-    loadMembers();
-  } catch (err) {
-    console.error('Error updating member:', err.message);
-    alert('❌ Failed to update member.');
-  }
-});
-
-async function loadPayments() {
-    // Placeholder
-}
-
-async function loadReports() {
-    // Placeholder  
-}
-
-async function loadProfile() {
-    // Placeholder
-}
-
-/* ---------- Cascading selects & form handlers for Employee & Member ---------- */
-/* Requires: supabase global client, master tables populated */
-
-async function loadDistrictOptions(selectId, includeBlank = true) {
-  const select = document.getElementById(selectId);
-  if (!select) return;
-  select.innerHTML = includeBlank ? '<option value="">Select District</option>' : '';
-  const { data, error } = await supabase.from('districts').select('id,name').order('name');
-  if (error) {
-    console.error('Failed to load districts', error);
-    return;
-  }
-  data.forEach(d => {
-    const opt = document.createElement('option');
-    opt.value = d.id;
-    opt.textContent = d.name;
-    select.appendChild(opt);
-  });
-}
-
-async function loadBlockOptions(selectId, districtId, includeBlank = true) {
-  const select = document.getElementById(selectId);
-  if (!select) return;
-  
-  select.innerHTML = includeBlank ? '<option value="">Select Block</option>' : '';
-  
-  if (!districtId) { 
-    select.disabled = true; 
-    return; 
-  }
-  
-  const { data, error } = await supabase
-    .from('blocks')
-    .select('id,name')
-    .eq('district_id', districtId)
-    .order('name');
-    
-  if (error) { 
-    console.error('Failed to load blocks', error); 
-    select.disabled = true; 
-    return; 
-  }
-  
-  data.forEach(b => {
-    const opt = document.createElement('option');
-    opt.value = b.id;
-    opt.textContent = b.name;
-    select.appendChild(opt);
-  });
-  
-  select.disabled = false; // ✅ FIX: Enable the dropdown
-}
-
-async function loadGpOptions(selectId, blockId, includeBlank = true) {
-  const select = document.getElementById(selectId);
-  if (!select) return;
-  select.innerHTML = includeBlank ? '<option value="">Select GP</option>' : '';
-  if (!blockId) { select.disabled = true; return; }
-  const { data, error } = await supabase.from('gps').select('id,name').eq('block_id', blockId).order('name');
-  if (error) { console.error('Failed to load gps', error); select.disabled = true; return; }
-  data.forEach(g => {
-    const opt = document.createElement('option');
-    opt.value = g.id;
-    opt.textContent = g.name;
-    select.appendChild(opt);
-  });
-  select.disabled = false;
-}
-
-/* Hook up change events - Employee modal */
-document.addEventListener('DOMContentLoaded', () => {
-  // When Employee modal opens we will populate districts
-// ========== EMPLOYEE MODAL CASCADE (CORRECTED) ==========
-$('#addEmployeeModal').on('show.bs.modal', async function () {
-  await loadDistrictOptions('empDistrict', true);
-  document.getElementById('empBlock').innerHTML = '<option value="">Select Block</option>';
-  document.getElementById('empBlock').disabled = true;
-  document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
-  document.getElementById('empGP').disabled = true;
-});
-
-// District changed → Load Blocks
-document.getElementById('empDistrict')?.addEventListener('change', async function () {
-  const d = this.value;
-  console.log('Employee District selected:', d);
-  await loadBlockOptions('empBlock', d, true);
-  document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
-  document.getElementById('empGP').disabled = true;
-});
-
-// ✅ BLOCK CHANGED → LOAD GPS (THIS WAS MISSING!)
-document.getElementById('empBlock')?.addEventListener('change', async function () {
-  const b = this.value;
-  console.log('Employee Block selected:', b);
-  if (b) {
-    await loadGpOptions('empGP', b, true);
-  } else {
-    document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
-    document.getElementById('empGP').disabled = true;
-  }
-});
-
-// Save Employee button
-document.getElementById('saveEmployeeBtn')?.addEventListener('click', async function() {
-  await saveEmployee();
-});
-
-
-  // Role based validation visual for employee modal
-  document.getElementById('empRole')?.addEventListener('change', function () {
-    const role = this.value;
-    const districtEl = document.getElementById('empDistrict');
-    const blockEl = document.getElementById('empBlock');
-    const gpEl = document.getElementById('empGP');
-
-    // Option C: coordinators required, GP workers require gp
-    if (role === 'coordinator') {
-      districtEl.required = true;
-      blockEl.required = false;
-      gpEl.required = false;
-    } else if (role === 'health_worker') {
-      districtEl.required = true;
-      blockEl.required = true;
-      gpEl.required = true;
-    } else {
-      districtEl.required = false;
-      blockEl.required = false;
-      gpEl.required = false;
-    }
-  });
-
-// ========== MEMBER MODAL CASCADE (CORRECTED) ==========
-$('#addMemberModal').on('show.bs.modal', async function () {
-  await loadDistrictOptions('memberDistrictId', true);
-  document.getElementById('memberBlockId').innerHTML = '<option value="">Select Block</option>';
-  document.getElementById('memberBlockId').disabled = true;
-  document.getElementById('memberGpId').innerHTML = '<option value="">Select GP</option>';
-  document.getElementById('memberGpId').disabled = true;
-});
-
-// District changed → Load Blocks
-document.getElementById('memberDistrictId')?.addEventListener('change', async function () {
-  const d = this.value;
-  console.log('Member District selected:', d);
-  await loadBlockOptions('memberBlockId', d, true);
-  document.getElementById('memberGpId').innerHTML = '<option value="">Select GP</option>';
-  document.getElementById('memberGpId').disabled = true;
-});
-
-// ✅ BLOCK CHANGED → LOAD GPS (THIS WAS MISSING!)
-document.getElementById('memberBlockId')?.addEventListener('change', async function () {
-  const b = this.value;
-  console.log('Member Block selected:', b);
-  if (b) {
-    await loadGpOptions('memberGpId', b, true);
-  } else {
-    document.getElementById('memberGpId').innerHTML = '<option value="">Select GP</option>';
-    document.getElementById('memberGpId').disabled = true;
-  }
-});
-
-// Save Member button
-document.getElementById('saveMemberBtn')?.addEventListener('click', async function() {
-  await saveMember();
-});
-
-
-
-
-/* ---------- Save handlers ---------- */
-
-async function saveEmployee() {
-  const name = document.getElementById('empName')?.value?.trim();
-  const email = document.getElementById('empEmail')?.value?.trim();
-  const phone = document.getElementById('empPhone')?.value?.trim();
-  const role = document.getElementById('empRole')?.value;
-  const password = document.getElementById('empPassword')?.value;
-  const address = document.getElementById('empAddress')?.value?.trim();
-  const district_id = document.getElementById('empDistrict')?.value || null;
-  const block_id = document.getElementById('empBlock')?.value || null;
-  const gp_id = document.getElementById('empGP')?.value || null;
-
-  // Basic validation
-  if (!name || !email || !phone) {
-    alert('Please fill name, email and phone');
-    return;
-  }
-
-  // Enforce hybrid policy: coordinators & gp workers required fields
-  if (role === 'coordinator' && !district_id) {
-    alert('Coordinator must be assigned a district');
-    return;
-  }
-  if (role === 'health_worker' && (!district_id || !block_id || !gp_id)) {
-    alert('Health worker must be assigned district, block and GP');
-    return;
-  }
-
-  try {
-    // create employee account row in employees table; you might also want to create auth user in Supabase Auth if needed
-    const payload = {
-      name, email, phone, role, address,
-      district_id: district_id ? Number(district_id) : null,
-      block_id: block_id ? Number(block_id) : null,
-      gp_id: gp_id ? Number(gp_id) : null,
-      created_at: new Date()
-    };
-
-    const { data, error } = await supabase.from('employees').insert([payload]);
-    if (error) throw error;
-    // close modal and refresh employees UI (if you have employees list)
-    $('#addEmployeeModal').modal('hide');
-    showToast('Employee created');
-    // optionally refresh employees table list function
-    if (typeof loadEmployees === 'function') loadEmployees();
-  } catch (err) {
-    console.error(err);
-    alert(err.message || 'Failed to create employee');
-  }
-}
-
-async function saveMember() {
-  const name = document.getElementById('memberName')?.value?.trim();
-  const father_name = document.getElementById('memberFatherName')?.value?.trim();
-  const age = Number(document.getElementById('memberAge')?.value || 0);
-  const gender = document.getElementById('memberGender')?.value;
-  const aadhar = document.getElementById('memberAadhar')?.value?.trim();
-  const contact_number = document.getElementById('memberContact')?.value?.trim();
-  const district_id = document.getElementById('memberDistrictId')?.value || null;
-  const block_id = document.getElementById('memberBlockId')?.value || null;
-  const gp_id = document.getElementById('memberGpId')?.value || null;
-  const full_address = document.getElementById('memberAddress')?.value?.trim();
-  const payment_received = document.getElementById('paymentReceived')?.checked || false;
-
-  if (!name || !contact_number || !district_id || !block_id || !gp_id) {
-    alert('Please fill required fields and select District/Block/GP');
-    return;
-  }
-
-  try {
-    // get district name for legacy textual field
-    const { data: drows } = await supabase.from('districts').select('name').eq('id', district_id).single();
-    const district_text = drows ? drows.name : null;
-
-    const payload = {
-      member_id: null, // you can generate a member_id pattern on server or client; leaving null for now
-      name, father_name, age, gender, aadhar_number: aadhar, contact_number,
-      full_address, payment_received,
-      district: district_text,
-      district_id: district_id ? Number(district_id) : null,
-      block_id: block_id ? Number(block_id) : null,
-      gp_id: gp_id ? Number(gp_id) : null,
-      created_at: new Date()
-    };
-
-    const { data, error } = await supabase.from('members').insert([payload]);
-    if (error) throw error;
-
-    $('#addMemberModal').modal('hide');
-    showToast('Member registered');
-    if (typeof loadMembers === 'function') loadMembers();
-  } catch (err) {
-    console.error(err);
-    alert(err.message || 'Failed to register member');
-  }
-}
-
-function applyLocationFilters(query, currentUser) {
-  if (!currentUser) return query;
-
-  if (currentUser.role === 'admin') {
-    return query;
-  }
-
-  if (currentUser.role === 'coordinator') {
-    return query.eq('district_id', currentUser.district_id);
-  }
-
-  if (currentUser.role === 'block_coordinator') {
-    return query.eq('block_id', currentUser.block_id);
-  }
-
-  if (currentUser.role === 'health_worker') {
-    return query.eq('gp_id', currentUser.gp_id);
-  }
-
-  return query.eq('id', -1);
-}
-
-async function loadMembersForCurrentUser(currentUser) {
-  let q = supabase.from('members').select('*');
-
-  q = applyLocationFilters(q, currentUser);
-
-  const { data, error } = await q.order('created_at', { ascending: false }).limit(200);
-
-  if (error) {
-    console.error('RBAC Query Failed:', error);
-    return [];
-  }
-
-  return data || [];
-}
-
-
 
 // ==============================
 // DELETE MEMBER FUNCTION
@@ -1165,64 +957,120 @@ window.editMember = async function (id) {
 
     if (error) throw error;
 
-    // Fill form fields inside the modal
-    document.getElementById('memberName').value = member.name || '';
-    document.getElementById('memberFatherName').value = member.father_name || '';
-    document.getElementById('memberAge').value = member.age || '';
-    document.getElementById('memberGender').value = member.gender || '';
-    document.getElementById('memberAadhar').value = member.aadhar_number || '';
-    document.getElementById('memberContact').value = member.contact_number || '';
-    document.getElementById('memberAlternate').value = member.alternate_number || '';
-    document.getElementById('memberClinical').value = member.clinical_history || '';
-    document.getElementById('memberDistrictId').value = member.district || '';
-    document.getElementById('memberAddress').value = member.full_address || member.address || '';
-    document.getElementById('memberNominee').value = member.nominee_name || member.nominee || '';
+    // Fill form fields in the edit modal
+    document.getElementById('editMemberId').value = member.id;
+    document.getElementById('editMemberName').value = member.name || '';
+    document.getElementById('editFatherName').value = member.father_name || '';
+    document.getElementById('editAge').value = member.age || '';
+    document.getElementById('editGender').value = member.gender || '';
+    document.getElementById('editAadhar').value = member.aadhar_number || '';
+    document.getElementById('editContact').value = member.contact_number || '';
+    document.getElementById('editAddress').value = member.address || '';
+    document.getElementById('editStatus').value = member.status || 'active';
 
-    // Show the same modal used for registration
+    // Load districts and preselect
+    await loadDistrictOptions('editDistrict', true);
+    if (member.district_id) {
+      document.getElementById('editDistrict').value = member.district_id;
+      // Load blocks for this district
+      await loadBlockOptions('editBlock', member.district_id, true);
+      if (member.block_id) {
+        document.getElementById('editBlock').value = member.block_id;
+        // Load GPs for this block
+        await loadGpOptions('editGP', member.block_id, true);
+        if (member.gp_id) {
+          document.getElementById('editGP').value = member.gp_id;
+        }
+      }
+    }
+
+    // Show the edit modal
     $('#editMemberModal').modal('show');
 
-    // Change the Register button text to "Update Member"
-    const btn = document.getElementById('saveMemberBtn');
-    btn.textContent = 'Update Member';
-
-    // Replace its old click function
-    btn.onclick = async () => {
-      try {
-        const updates = {
-          name: document.getElementById('memberName').value.trim(),
-          father_name: document.getElementById('memberFatherName').value.trim(),
-          age: parseInt(document.getElementById('memberAge').value, 10),
-          gender: document.getElementById('memberGender').value,
-          aadhar_number: document.getElementById('memberAadhar').value.trim(),
-          contact_number: document.getElementById('memberContact').value.trim(),
-          alternate_number: document.getElementById('memberAlternate').value.trim(),
-          clinical_history: document.getElementById('memberClinical').value.trim(),
-          district: document.getElementById('memberDistrictId').value,
-          state: document.getElementById('memberState').value,
-          full_address: document.getElementById('memberAddress').value.trim(),
-          nominee_name: document.getElementById('memberNominee').value.trim(),
-          updated_at: new Date()
-        };
-
-        const { error: updateError } = await supabase
-          .from('members')
-          .update(updates)
-          .eq('id', id);
-
-        if (updateError) throw updateError;
-
-        alert('✅ Member updated successfully!');
-        $('#addMemberModal').modal('hide');
-        btn.textContent = 'Register Member';
-        loadMembers();
-      } catch (err) {
-        alert('❌ Error updating member: ' + err.message);
-      }
-    };
   } catch (err) {
-    console.error('Error editing member:', err);
+    console.error('Error loading member details:', err);
     alert('❌ Error loading member details.');
   }
 };
-}); // Close the DOMContentLoaded event listener
 
+// Update Member function
+document.getElementById('updateMemberBtn').addEventListener('click', async () => {
+  try {
+    const id = document.getElementById('editMemberId').value;
+
+    const updates = {
+      name: document.getElementById('editMemberName').value,
+      father_name: document.getElementById('editFatherName').value,
+      age: parseInt(document.getElementById('editAge').value),
+      gender: document.getElementById('editGender').value,
+      aadhar_number: document.getElementById('editAadhar').value,
+      contact_number: document.getElementById('editContact').value,
+      district_id: document.getElementById('editDistrict').value,
+      block_id: document.getElementById('editBlock').value,
+      gp_id: document.getElementById('editGP').value,
+      address: document.getElementById('editAddress').value,
+      status: document.getElementById('editStatus').value,
+      updated_at: new Date().toISOString()
+    };
+
+    // Get district name for display
+    if (updates.district_id) {
+      const { data: districtData } = await supabase
+        .from('districts')
+        .select('name')
+        .eq('id', updates.district_id)
+        .single();
+      
+      if (districtData) {
+        updates.district = districtData.name;
+      }
+    }
+
+    const { error } = await supabase
+      .from('members')
+      .update(updates)
+      .eq('id', id);
+
+    if (error) throw error;
+
+    alert('✅ Member updated successfully!');
+    $('#editMemberModal').modal('hide');
+    loadMembers();
+  } catch (err) {
+    console.error('Error updating member:', err.message);
+    alert('❌ Failed to update member: ' + err.message);
+  }
+});
+
+// Setup edit modal cascade dropdowns
+document.getElementById('editDistrict')?.addEventListener('change', async function () {
+  const districtId = this.value;
+  await loadBlockOptions('editBlock', districtId, true);
+  document.getElementById('editGP').innerHTML = '<option value="">Select GP</option>';
+  document.getElementById('editGP').disabled = true;
+});
+
+document.getElementById('editBlock')?.addEventListener('change', async function () {
+  const blockId = this.value;
+  if (blockId) {
+    await loadGpOptions('editGP', blockId, true);
+  } else {
+    document.getElementById('editGP').innerHTML = '<option value="">Select GP</option>';
+    document.getElementById('editGP').disabled = true;
+  }
+});
+
+async function loadPayments() {
+    // Placeholder - implement payment loading
+    console.log('Loading payments...');
+}
+
+async function loadReports() {
+    // Placeholder - implement report loading
+    console.log('Loading reports...');
+}
+
+async function loadProfile() {
+    // Placeholder - implement profile loading
+    console.log('Loading profile...');
+}
