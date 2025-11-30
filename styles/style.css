@@ -168,3 +168,14 @@
     #masterContent .btn {
         margin-bottom: 10px;
     }
+
+/* Register member footer button */
+.btn-outline-warning {
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.btn-outline-warning:hover {
+    background-color: #bf0d0d;
+    color: #f6f8fa;
+}
