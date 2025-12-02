@@ -1,99 +1,143 @@
-// Permission mapping and access control functions
+// permissions.js - Role-based permissions and access control
 
-// Permission mapping for sections
+// Define section permissions for different roles
 const sectionPermissions = {
-    // Dashboard sections - available to all
+    // Dashboard and basic sections - accessible to all logged-in users
     'dashboard': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
-    'kpis': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
-    'activity-logs': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
-    'geo-heatmap': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
+    'kpis': ['admin', 'coordinator'],
+    'activity-logs': ['admin'],
+    'geo-heatmap': ['admin', 'coordinator'],
     
-    // Search sections - available to all
-    'search-members': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
-    'search-employees': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
-    'search-payments': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
-    'advanced-filters': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
-    'geo-smart-search': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
+    // Search sections
+    'search-members': ['admin', 'coordinator', 'health_worker', 'employee'],
+    'search-employees': ['admin', 'coordinator'],
+    'search-payments': ['admin', 'coordinator', 'accountant'],
+    'advanced-filters': ['admin', 'coordinator'],
+    'geo-smart-search': ['admin', 'coordinator'],
     
-    // Master Data - Admin only
-    'districts-master': ['admin'],
-    'blocks-master': ['admin'],
-    'gps-master': ['admin'],
+    // Master Data sections
+    'master': ['admin', 'coordinator'],
+    'blocks-master': ['admin', 'coordinator'],
+    'gps-master': ['admin', 'coordinator'],
     
-    // Employee Master - Admin only
+    // Employee sections
     'add-employee': ['admin'],
-    'employee-list': ['admin'],
-    'employee-details': ['admin'],
-    'salary-slips': ['admin'],
-    'health-worker-performance': ['admin'],
-    'performance-scorecard': ['admin'],
+    'employee-list': ['admin', 'coordinator'],
+    'employee-details': ['admin', 'coordinator'],
+    'salary-slips': ['admin', 'coordinator'],
+    'health-worker-performance': ['admin', 'coordinator'],
+    'performance-scorecard': ['admin', 'coordinator'],
     
-    // Members - Admin, Coordinator, Health Worker
+    // Member sections
     'register-member': ['admin', 'coordinator', 'health_worker'],
-    'member-list': ['admin', 'coordinator', 'health_worker'],
-    'member-view': ['admin', 'coordinator', 'health_worker'],
-    'member-card': ['admin', 'coordinator', 'health_worker'],
+    'member-list': ['admin', 'coordinator', 'health_worker', 'employee'],
+    'member-view': ['admin', 'coordinator', 'health_worker', 'employee'],
+    'member-card': ['admin', 'coordinator', 'health_worker', 'employee'],
     'renewal-expiry': ['admin', 'coordinator', 'health_worker'],
     'beneficiary-management': ['admin', 'coordinator', 'health_worker'],
     
-    // Payments - Admin and Accountant
-    'payment-list': ['admin', 'accountant'],
-    'pending-payments': ['admin', 'accountant'],
-    'price-master': ['admin', 'accountant'],
-    'revenue-breakdown': ['admin', 'accountant'],
+    // Payment sections
+    'payment-list': ['admin', 'coordinator', 'accountant'],
+    'pending-payments': ['admin', 'coordinator', 'accountant'],
+    'price-master': ['admin', 'coordinator'],
+    'revenue-breakdown': ['admin', 'coordinator'],
     
-    // Reports - Admin and Coordinator
-    'summary-reports': ['admin', 'coordinator'],
-    'daily-summary': ['admin', 'coordinator'],
-    'weekly-summary': ['admin', 'coordinator'],
-    'monthly-performance': ['admin', 'coordinator'],
+    // Reports sections
+    'summary-reports': ['admin', 'coordinator', 'accountant'],
+    'daily-summary': ['admin', 'coordinator', 'accountant'],
+    'weekly-summary': ['admin', 'coordinator', 'accountant'],
+    'monthly-performance': ['admin', 'coordinator', 'accountant'],
     
-    // Admin Tools - Admin only
+    // Admin Tools sections
     'user-roles': ['admin'],
     'permission-matrix': ['admin'],
     'system-logs': ['admin'],
     'backups': ['admin'],
     
-    // Audit - Admin only
-    'financial-audit': ['admin'],
-    'data-export-logs': ['admin'],
-    'district-performance-audit': ['admin'],
+    // Audit & Compliance
+    'financial-audit': ['admin', 'coordinator'],
+    'data-export-logs': ['admin', 'coordinator'],
+    'district-performance-audit': ['admin', 'coordinator'],
     
-    // Data Import - Admin only
-    'import-members': ['admin'],
-    'import-employees': ['admin'],
-    'import-geo-data': ['admin'],
+    // Data Import
+    'import-members': ['admin', 'coordinator'],
+    'import-employees': ['admin', 'coordinator'],
+    'import-geo-data': ['admin', 'coordinator'],
     
-    // Ticket System - Available to all
+    // Ticket System
     'raise-ticket': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
-    'tickets-list': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
-    'resolution-history': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
+    'tickets-list': ['admin', 'coordinator'],
+    'resolution-history': ['admin', 'coordinator'],
     
-    // Partner Validation - Available to all
-    'validation': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
+    // Partner Validation
+    'validation': ['admin', 'coordinator', 'health_worker', 'employee'],
     
-    // Profile - Available to all
+    // Profile - accessible to all logged-in users
     'profile': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee']
 };
 
 // Check if user has permission for a section
-function hasPermission(sectionId) {
-    // If no permissions defined for section, allow access
-    if (!sectionPermissions[sectionId]) return true;
+window.checkPermission = function(sectionId) {
+    console.log(`🔐 Checking permission for ${sectionId}`);
+    console.log(`👤 Current user:`, window.currentUser);
+    console.log(`🎭 Current role:`, window.currentRole);
     
-    // Check if current role has permission
-    return sectionPermissions[sectionId].includes(currentRole);
-}
+    // If no user or role, deny access (shouldn't happen as user is logged in)
+    if (!window.currentUser || !window.currentRole) {
+        console.log('❌ No user or role found');
+        return false;
+    }
 
-// Show access denied message
-function showAccessDenied() {
-    // Hide all sections
-    document.querySelectorAll('.section').forEach(section => {
-        section.classList.remove('active');
-        section.style.display = 'none';
-    });
+    // Admin has access to everything
+    if (window.currentRole === 'admin') {
+        console.log('✅ Admin access granted');
+        return true;
+    }
+
+    // Check if section exists in permissions
+    if (sectionPermissions[sectionId]) {
+        const hasAccess = sectionPermissions[sectionId].includes(window.currentRole);
+        console.log(`📋 Section requires: ${sectionPermissions[sectionId].join(', ')}`);
+        console.log(`🔍 User has role: ${window.currentRole}`);
+        console.log(`🎯 Access ${hasAccess ? '✅ GRANTED' : '❌ DENIED'}`);
+        return hasAccess;
+    }
+
+    console.log(`⚠️ Section ${sectionId} not found in permissions`);
+    // Default: deny access for unknown sections
+    return false;
+};
+
+// Get permission description for current section
+window.getPermissionDescription = function(sectionId) {
+    if (checkPermission(sectionId)) {
+        return "You have access to this section.";
+    } else {
+        const roles = sectionPermissions[sectionId] || [];
+        return `Required roles: ${roles.join(', ')}`;
+    }
+};
+
+// UI update function - NO MORE HIDING MENU ITEMS
+window.updateUIForRole = function() {
+    console.log('Updating UI for role:', window.currentRole);
     
-    // Show access denied section
-    document.getElementById('accessDeniedSection').style.display = 'block';
-    document.getElementById('accessDeniedSection').classList.add('active');
-}
+    // Update user display only
+    if (window.currentUser && window.currentUser.name) {
+        const userNameElement = document.getElementById('userName');
+        const dropdownUserName = document.getElementById('dropdownUserName');
+        const dropdownUserEmail = document.getElementById('dropdownUserEmail');
+        
+        if (userNameElement) userNameElement.textContent = window.currentUser.name;
+        if (dropdownUserName) dropdownUserName.textContent = window.currentUser.name;
+        if (dropdownUserEmail) dropdownUserEmail.textContent = window.currentUser.email;
+    } else {
+        const userNameElement = document.getElementById('userName');
+        const dropdownUserName = document.getElementById('dropdownUserName');
+        
+        if (userNameElement) userNameElement.textContent = 'User';
+        if (dropdownUserName) dropdownUserName.textContent = 'User';
+    }
+    
+    console.log('✅ UI updated for role:', window.currentRole);
+};

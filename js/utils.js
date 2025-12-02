@@ -1,43 +1,64 @@
-// utils.js
-// Utility functions used across the application
+// utils.js - Utility functions
 
-// Cascade dropdown functions
-async function loadDistrictOptions(selectId, includeBlank = true) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
+// Setup cascade dropdowns for District -> Block -> GP
+window.setupCascadeDropdowns = function() {
+    console.log('Setting up cascade dropdowns...');
     
-    select.innerHTML = includeBlank ? '<option value="">Select District</option>' : '';
-    
+    // District dropdown change event
+    document.addEventListener('change', function(e) {
+        if (e.target && e.target.id === 'memberDistrictId') {
+            const districtId = e.target.value;
+            loadBlockOptions('memberBlockId', districtId);
+        } else if (e.target && e.target.id === 'memberBlockId') {
+            const blockId = e.target.value;
+            loadGpOptions('memberGPId', blockId);
+        } else if (e.target && e.target.id === 'empDistrict') {
+            const districtId = e.target.value;
+            loadBlockOptions('empBlock', districtId);
+        } else if (e.target && e.target.id === 'empBlock') {
+            const blockId = e.target.value;
+            loadGpOptions('empGP', blockId);
+        }
+    });
+};
+
+// Load district options
+window.loadDistrictOptions = async function(selectId, preselect = false) {
     try {
-        const { data, error } = await supabase
+        const { data: districts, error } = await supabase
             .from('districts')
             .select('id, name')
             .order('name');
             
         if (error) throw error;
         
-        data.forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.textContent = d.name;
-            select.appendChild(opt);
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">Select District</option>';
+        districts.forEach(district => {
+            const option = document.createElement('option');
+            option.value = district.id;
+            option.textContent = district.name;
+            select.appendChild(option);
         });
     } catch (error) {
-        console.error('Failed to load districts:', error);
+        console.error('Error loading districts:', error);
     }
-}
+};
 
-async function loadBlockOptions(selectId, districtId, includeBlank = true) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    
-    select.innerHTML = includeBlank ? '<option value="">Select Block</option>' : '';
-    select.disabled = true;
-    
-    if (!districtId) return;
+// Load block options based on district
+window.loadBlockOptions = async function(selectId, districtId, preselect = false) {
+    if (!districtId) {
+        const select = document.getElementById(selectId);
+        if (select) {
+            select.innerHTML = '<option value="">Select District First</option>';
+        }
+        return;
+    }
     
     try {
-        const { data, error } = await supabase
+        const { data: blocks, error } = await supabase
             .from('blocks')
             .select('id, name')
             .eq('district_id', districtId)
@@ -45,30 +66,35 @@ async function loadBlockOptions(selectId, districtId, includeBlank = true) {
             
         if (error) throw error;
         
-        data.forEach(b => {
-            const opt = document.createElement('option');
-            opt.value = b.id;
-            opt.textContent = b.name;
-            select.appendChild(opt);
-        });
+        const select = document.getElementById(selectId);
+        if (!select) return;
         
-        select.disabled = false;
-    } catch (error) {
-        console.error('Failed to load blocks:', error);
-    }
-}
+        select.innerHTML = '<option value="">Select Block</option>';
+        blocks.forEach(block => {
+            const option = document.createElement('option');
+            option.value = block.id;
+            option.textContent = block.name;
+            select.appendChild(option);
+        });
 
-async function loadGpOptions(selectId, blockId, includeBlank = true) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    
-    select.innerHTML = includeBlank ? '<option value="">Select GP</option>' : '';
-    select.disabled = true;
-    
-    if (!blockId) return;
+        
+    } catch (error) {
+        console.error('Error loading blocks:', error);
+    }
+};
+
+// Load GP options based on block
+window.loadGpOptions = async function(selectId, blockId, preselect = false) {
+    if (!blockId) {
+        const select = document.getElementById(selectId);
+        if (select) {
+            select.innerHTML = '<option value="">Select Block First</option>';
+        }
+        return;
+    }
     
     try {
-        const { data, error } = await supabase
+        const { data: gps, error } = await supabase
             .from('gps')
             .select('id, name')
             .eq('block_id', blockId)
@@ -76,156 +102,135 @@ async function loadGpOptions(selectId, blockId, includeBlank = true) {
             
         if (error) throw error;
         
-        data.forEach(g => {
-            const opt = document.createElement('option');
-            opt.value = g.id;
-            opt.textContent = g.name;
-            select.appendChild(opt);
-        });
+        const select = document.getElementById(selectId);
+        if (!select) return;
         
-        select.disabled = false;
-    } catch (error) {
-        console.error('Failed to load GPs:', error);
-    }
-}
-
-// Form reset functions
-function resetMemberForm() {
-    if (confirm('Are you sure you want to reset the member registration form? All entered data will be lost.')) {
-        document.getElementById('addMemberForm').reset();
-        document.getElementById('familyBody').innerHTML = '';
-        document.getElementById('memberDistrictId').innerHTML = '<option value="">Select District</option>';
-        document.getElementById('memberBlockId').innerHTML = '<option value="">Select Block</option>';
-        document.getElementById('memberBlockId').disabled = true;
-        document.getElementById('memberGPId').innerHTML = '<option value="">Select GP</option>';
-        document.getElementById('memberGPId').disabled = true;
-        loadDistrictOptions('memberDistrictId', true);
-        console.log('Member form reset successfully.');
-    }
-}
-
-function resetEmployeeForm() {
-    if (confirm('Are you sure you want to reset the employee form?')) {
-        document.getElementById('addEmployeeForm').reset();
-        document.getElementById('empDistrict').innerHTML = '<option value="">Select District</option>';
-        document.getElementById('empBlock').innerHTML = '<option value="">Select Block</option>';
-        document.getElementById('empBlock').disabled = true;
-        document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
-        document.getElementById('empGP').disabled = true;
-        loadDistrictOptions('empDistrict', true);
-        console.log('Employee form reset successfully.');
-    }
-}
-
-// Setup cascade dropdowns
-function setupCascadeDropdowns() {
-    // Employee Modal Cascade
-    $('#addEmployeeModal').on('show.bs.modal', async function () {
-        await loadDistrictOptions('empDistrict', true);
-    });
-
-    // Employee District Changed
-    document.getElementById('empDistrict')?.addEventListener('change', async function () {
-        const districtId = this.value;
-        await loadBlockOptions('empBlock', districtId, true);
-        document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
-        document.getElementById('empGP').disabled = true;
-    });
-
-    // Employee Block Changed
-    document.getElementById('empBlock')?.addEventListener('change', async function () {
-        const blockId = this.value;
-        if (blockId) {
-            await loadGpOptions('empGP', blockId, true);
-        } else {
-            document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
-            document.getElementById('empGP').disabled = true;
-        }
-    });
-
-    // Member Modal Cascade
-    $('#addMemberModal').on('show.bs.modal', async function () {
-        await loadDistrictOptions('memberDistrictId', true);
-    });
-
-    // Member District Changed
-    document.getElementById('memberDistrictId')?.addEventListener('change', async function () {
-        const districtId = this.value;
-        await loadBlockOptions('memberBlockId', districtId, true);
-        document.getElementById('memberGPId').innerHTML = '<option value="">Select GP</option>';
-        document.getElementById('memberGPId').disabled = true;
-    });
-
-    // Member Block Changed
-    document.getElementById('memberBlockId')?.addEventListener('change', async function () {
-        const blockId = this.value;
-        if (blockId) {
-            await loadGpOptions('memberGPId', blockId, true);
-        } else {
-            document.getElementById('memberGPId').innerHTML = '<option value="">Select GP</option>';
-            document.getElementById('memberGPId').disabled = true;
-        }
-    });
-}
-
-// Family member handlers
-function setupFamilyMemberHandlers() {
-    const addFamilyBtn = document.getElementById('addFamilyBtn');
-    const familyBody = document.getElementById('familyBody');
-
-    if (addFamilyBtn && familyBody) {
-        addFamilyBtn.addEventListener('click', () => {
-            if (familyBody.children.length >= 4) {
-                alert("You can only add up to 4 family members.");
-                return;
-            }
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><input type="text" class="form-control form-control-sm fam-name" placeholder="Name" required></td>
-                <td><input type="number" class="form-control form-control-sm fam-age" placeholder="Age" required min="1" max="120"></td>
-                <td>
-                    <select class="form-control form-control-sm fam-relation" required>
-                        <option value="">Select Relation</option>
-                        <option value="Spouse">Spouse</option>
-                        <option value="Father">Father</option>
-                        <option value="Mother">Mother</option>
-                        <option value="Son">Son</option>
-                        <option value="Daughter">Daughter</option>
-                        <option value="Brother">Brother</option>
-                        <option value="Sister">Sister</option>
-                    </select>
-                </td>
-                <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-danger removeFam">×</button>
-                </td>
-            `;
-            familyBody.appendChild(tr);
-
-            // Remove row button
-            tr.querySelector('.removeFam').addEventListener('click', () => tr.remove());
+        select.innerHTML = '<option value="">Select GP</option>';
+        gps.forEach(gp => {
+            const option = document.createElement('option');
+            option.value = gp.id;
+            option.textContent = gp.name;
+            select.appendChild(option);
         });
-    }
-}
 
-// Export functions
-window.exportToExcel = async function() {
-    const { data: members } = await supabase.from('members').select('*');
-    if (!members) return;
-    
-    const csv = [
-        ['Member ID', 'Name', 'Phone', 'District', 'Join Date', 'Status'],
-        ...members.map(m => [m.member_id, m.name, m.contact_number, m.district, m.join_date, m.status])
-    ].map(row => row.join(',')).join('\n');
-    
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'members-export.csv';
-    a.click();
+
+    } catch (error) {
+        console.error('Error loading GPs:', error);
+    }
 };
 
-window.exportToPDF = function() {
-    alert('PDF export would be implemented here with proper PDF library');
+// Setup family member handlers
+window.setupFamilyMemberHandlers = function() {
+    console.log('Setting up family member handlers...');
+    
+    const addFamilyBtn = document.getElementById('addFamilyBtn');
+    const familyBody = document.getElementById('familyBody');
+    
+    if (!addFamilyBtn || !familyBody) return;
+    
+    // Add family member
+    addFamilyBtn.addEventListener('click', function() {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <input type="text" class="form-control form-control-sm fam-name" placeholder="Name" required>
+            </td>
+            <td>
+                <input type="number" class="form-control form-control-sm fam-age" placeholder="Age" min="0" max="120" required>
+            </td>
+            <td>
+                <select class="form-control form-control-sm fam-relation">
+                    <option value="spouse">Spouse</option>
+                    <option value="son">Son</option>
+                    <option value="daughter">Daughter</option>
+                    <option value="father">Father</option>
+                    <option value="mother">Mother</option>
+                    <option value="brother">Brother</option>
+                    <option value="sister">Sister</option>
+                </select>
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm btn-danger remove-family">
+                    <i class="fas fa-times"></i>
+                </button>
+            </td>
+        `;
+        familyBody.appendChild(row);
+    });
+    
+    // Remove family member
+    familyBody.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-family') || 
+            e.target.closest('.remove-family')) {
+            const row = e.target.closest('tr');
+            if (row) {
+                row.remove();
+            }
+        }
+    });
+};
+
+// Reset member form
+window.resetMemberForm = function() {
+    console.log('Resetting member form...');
+    const form = document.getElementById('addMemberForm');
+    if (form) {
+        form.reset();
+        
+        // Reset family members
+        const familyBody = document.getElementById('familyBody');
+        if (familyBody) {
+            familyBody.innerHTML = '';
+        }
+        
+        // Reset dropdowns
+        const districtSelect = document.getElementById('memberDistrictId');
+        const blockSelect = document.getElementById('memberBlockId');
+        const gpSelect = document.getElementById('memberGPId');
+        
+        if (districtSelect) districtSelect.selectedIndex = 0;
+        if (blockSelect) blockSelect.innerHTML = '<option value="">Select District First</option>';
+        if (gpSelect) gpSelect.innerHTML = '<option value="">Select Block First</option>';
+        
+        alert('Member form has been reset.');
+    }
+};
+
+// Reset employee form
+window.resetEmployeeForm = function() {
+    console.log('Resetting employee form...');
+    const form = document.getElementById('addEmployeeForm');
+    if (form) {
+        form.reset();
+        
+        // Reset dropdowns
+        const districtSelect = document.getElementById('empDistrict');
+        const blockSelect = document.getElementById('empBlock');
+        const gpSelect = document.getElementById('empGP');
+        
+        if (districtSelect) districtSelect.selectedIndex = 0;
+        if (blockSelect) blockSelect.innerHTML = '<option value="">Select District First</option>';
+        if (gpSelect) gpSelect.innerHTML = '<option value="">Select Block First</option>';
+        
+        alert('Employee form has been reset.');
+    }
+};
+
+// Simple toast function
+window.showToast = function(msg, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : 'success'} alert-dismissible fade show`;
+    toast.innerHTML = `
+        ${msg}
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+    `;
+    
+    const wrapper = document.querySelector('.content') || document.body;
+    wrapper.prepend(toast);
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 4000);
 };

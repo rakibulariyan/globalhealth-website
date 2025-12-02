@@ -1,7 +1,5 @@
-// Authentication functions
-
-// WORKING LOGIN FUNCTION - Uses Supabase Auth
-async function handleLogin(e) {
+// auth.js - Updated login function
+window.handleLogin = async function(e) {
     e.preventDefault();
 
     const email = document.getElementById('loginEmail').value;
@@ -32,27 +30,43 @@ async function handleLogin(e) {
 
         console.log('Supabase Auth successful:', data.user);
 
-        // Now get employee details from database
+        // Get employee details from database - FIXED QUERY
         const { data: employee, error: empError } = await supabase
             .from('employees')
             .select('*')
             .eq('email', email)
             .single();
 
-        if (empError && empError.code !== 'PGRST116') { // PGRST116 can be "No rows" — still okay
-            console.warn('Warning fetching employee record:', empError);
+        console.log('Employee data retrieved:', employee);
+
+        if (empError) {
+            console.error('Error fetching employee record:', empError);
+            // Even if employee record not found, allow login with default role
+            if (empError.code === 'PGRST116') {
+                // No employee record found - set default
+                window.currentUser = {
+                    id: data.user.id,
+                    email: data.user.email,
+                    name: data.user.email.split('@')[0],
+                    role: 'employee'  // Default role
+                };
+                window.currentRole = 'employee';
+            } else {
+                throw empError;
+            }
+        } else {
+            // Employee record found - use database role
+            window.currentUser = {
+                id: data.user.id,
+                email: data.user.email,
+                name: employee?.name || data.user.email.split('@')[0],
+                role: employee?.role?.toLowerCase() || 'employee'  // Convert to lowercase
+            };
+            window.currentRole = employee?.role?.toLowerCase() || 'employee';
         }
 
-        // --- SET USER SESSION (important for RLS) ---
-        currentUser = {
-            id: data.user.id,
-            email: data.user.email,
-            name: employee?.name || 'User',
-            role: employee?.role || 'employee'
-        };
-        currentRole = employee?.role || 'employee';
-
-        console.log('Login successful:', currentUser);
+        console.log('Login successful:', window.currentUser);
+        console.log('Current role set to:', window.currentRole);
 
         // Update UI and show app
         updateUIForRole();
@@ -62,13 +76,9 @@ async function handleLogin(e) {
     } catch (error) {
         console.error('Login failed:', error);
         alert('Login failed: ' + (error.message || JSON.stringify(error)));
-
-        // Helpful hint for common scenario
-        if (error && error.message && error.message.toLowerCase().includes('invalid')) {
-            alert('Please make sure:\n1. User exists in Supabase Authentication\n2. Email and password are correct\n3. User is confirmed (not just invited)');
-        }
+        
     }
-}
+};
 
 // Logout function
 async function handleLogout() {

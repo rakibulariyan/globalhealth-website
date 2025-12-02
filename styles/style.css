@@ -2,9 +2,8 @@
 .hidden {
 display: none !important;
 }
-
 /* Login page styling */
- .login-page {
+.login-page {
     min-height: 100vh;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     display: flex;
@@ -46,6 +45,197 @@ display: none !important;
     font-size: 80px;
     color: #dc3545;
     margin-bottom: 20px;
- }
+}
+
+/* Dashboard Cards */
+.dashboard-card {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    border: none;
+    border-radius: 10px;
+}
+
+.stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 10px 0;
+}
+
+/* User Photo Styles */
+.img-circle {
+    border-radius: 50% !important;
+}
+
+.dropdown-header {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    color: white;
+    padding: 20px;
+}
+
+/* Form Styling */
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 0.2rem rgba(44, 127, 184, 0.25);
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .login-box {
+        width: 90%;
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+    }
+}
+
+/* Print Styles for Membership Cards */
+@media print {
+    body * {
+        visibility: hidden;
+    }
+    .member-card-print, .member-card-print * {
+        visibility: visible;
+    }
+    .member-card-print {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+    }
+}
+
+/* Make Master tabs look like AdminLTE tabs */
+    #masterTabs .nav-link {
+        cursor: pointer;
+        padding: 8px 15px;
+        font-weight: 500;
+        border-radius: 4px;
+        color: #444;
+        background: #f4f6f9;
+        margin-right: 5px;
+        border: 1px solid #ddd;
+    }
+
+    #masterTabs .nav-link.active {
+        background: #007bff;
+        color: #fff;
+        border-color: #007bff;
+    }
+
+    /* Responsive table */
+    #masterContent table {
+        width: 100%;
+        background: white;
+    }
+
+    #masterContent .table-responsive {
+        overflow-x: auto;
+    }
+
+    /* Card padding fixes */
+    #master .card-body {
+        padding: 15px;
+    }
+
+    /* Export button alignment */
+    #masterContent .btn {
+        margin-bottom: 10px;
+    }
+
+/* Register member footer button */
+.btn-outline-warning {
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.btn-outline-warning:hover {
+    background-color: #bf0d0d;
+    color: #f6f8fa;
+}
+
+/* Access Denied Styles */
+.access-denied-container {
+    min-height: 70vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+}
+
+.access-denied-content {
+    max-width: 800px;
+    text-align: center;
+    padding: 40px;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.access-denied-icon {
+    font-size: 80px;
+    color: #dc3545;
+    margin-bottom: 20px;
+}
+
+.access-denied-icon i {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+}
+
+.access-denied-content h1 {
+    color: #dc3545;
+    margin-bottom: 20px;
+    font-size: 2.2rem;
+}
+
+.access-denied-content .lead {
+    font-size: 1.2rem;
+    color: #495057;
+    margin-bottom: 15px;
+}
+
+.access-denied-content p {
+    color: #6c757d;
+    margin-bottom: 10px;
+    line-height: 1.6;
+}
+
+/* Permission badges in list */
+.permission-badge {
+    font-size: 0.8rem;
+    padding: 3px 8px;
+    margin-left: 5px;
+}
+
+.permission-badge.admin {
+    background-color: #dc3545;
+    color: white;
+}
+
+.permission-badge.coordinator {
+    background-color: #007bff;
+    color: white;
+}
+
+.permission-badge.health_worker {
+    background-color: #28a745;
+    color: white;
+}
+
+.permission-badge.accountant {
+    background-color: #ffc107;
+    color: black;
+}
+
+.permission-badge.employee {
+    background-color: #6c757d;
+    color: white;
+}
 
 

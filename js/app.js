@@ -1,9 +1,9 @@
 // app.js
 // Main application initialization and core functions
 
-// Global variables
-let currentUser = null;
-let currentRole = null;
+// Global variables (accessible across modules)
+window.currentUser = null;
+window.currentRole = null;
 
 // DOM Elements
 const loginSection = document.getElementById('loginSection');
@@ -15,7 +15,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
 
-// Application initialization
+// app.js - Updated initialization
 async function initializeApp() {
     console.log('Initializing app...');
     showLogin();
@@ -31,35 +31,55 @@ async function initializeApp() {
             return;
         }
 
+        console.log('Session retrieved:', session);
+
         if (session && session.user) {
             console.log("✅ Session found:", session.user.email);
             
-            // ✅ Get employee details to determine role
+            // ✅ Get employee details to determine role - FIXED QUERY
             const { data: employee, error: empError } = await supabase
                 .from('employees')
                 .select('*')
                 .eq('email', session.user.email)
                 .single();
 
-            if (empError && empError.code !== 'PGRST116') {
+            console.log('Employee data on init:', employee);
+            console.log('Employee error on init:', empError);
+
+            if (empError) {
                 console.warn('Employee record fetch warning:', empError);
+                // Set default if employee record not found
+                if (empError.code === 'PGRST116') {
+                    window.currentUser = {
+                        id: session.user.id,
+                        email: session.user.email,
+                        name: session.user.email.split('@')[0],
+                        role: 'employee'
+                    };
+                    window.currentRole = 'employee';
+                }
+            } else if (employee) {
+                // ✅ Set current user and role - CONVERT TO LOWERCASE
+                window.currentUser = {
+                    id: session.user.id,
+                    email: session.user.email,
+                    name: employee?.name || session.user.email.split('@')[0],
+                    role: employee?.role?.toLowerCase() || 'employee'
+                };
+                window.currentRole = employee?.role?.toLowerCase() || 'employee';
             }
 
-            // ✅ Set current user and role
-            currentUser = {
-                id: session.user.id,
-                email: session.user.email,
-                name: employee?.name || session.user.email.split('@')[0],
-                role: employee?.role || 'employee'
-            };
-            currentRole = employee?.role || 'employee';
-
-            console.log('✅ User restored:', currentUser);
+            console.log('✅ User restored:', window.currentUser);
+            console.log('✅ User role:', window.currentRole);
             
             // ✅ Show app with proper UI
             showApp();
             updateUIForRole();
-            loadDashboardData();
+            
+            // ✅ Navigate to dashboard (permission will be checked)
+            setTimeout(() => {
+                navigateToSection('dashboard');
+            }, 100);
             
         } else {
             console.log("❌ No active session");
@@ -70,6 +90,7 @@ async function initializeApp() {
         showLogin();
     }
 }
+
 
 // Setup all event listeners
 function setupEventListeners() {
@@ -84,8 +105,8 @@ function setupEventListeners() {
 
             case 'SIGNED_OUT':
                 console.log('User signed out');
-                currentUser = null;
-                currentRole = null;
+                window.currentUser = null;
+                window.currentRole = null;
                 showLogin();
                 break;
 
@@ -105,32 +126,41 @@ function setupEventListeners() {
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     
-    // Navigation
+    // Navigation - Handle ALL nav link clicks
     document.addEventListener('click', function(e) {
+        // Check if clicked on nav link or its child
         if (e.target.matches('.nav-link[data-section]') || e.target.closest('.nav-link[data-section]')) {
             e.preventDefault();
             const link = e.target.matches('.nav-link[data-section]') ? e.target : e.target.closest('.nav-link[data-section]');
             const sectionId = link.getAttribute('data-section');
+            console.log(`Nav clicked: ${sectionId}`);
             navigateToSection(sectionId);
+        }
+        
+        // Handle sidebar menu toggle clicks
+        if (e.target.matches('.has-treeview > .nav-link') || e.target.closest('.has-treeview > .nav-link')) {
+            e.preventDefault();
+            // Let Bootstrap handle the treeview toggle
+            return;
         }
     });
 
     // Employee management
-    document.getElementById('saveEmployeeBtn').addEventListener('click', saveEmployee);
+    document.getElementById('saveEmployeeBtn')?.addEventListener('click', saveEmployee);
     
     // Member management
-    document.getElementById('saveMemberBtn').addEventListener('click', saveMember);
+    document.getElementById('saveMemberBtn')?.addEventListener('click', saveMember);
 
     // Family member functionality
     setupFamilyMemberHandlers();
 
     // Member search
-    document.getElementById('memberSearch').addEventListener('input', searchMembers);
+    document.getElementById('memberSearch')?.addEventListener('input', searchMembers);
     
     // Forgot password
-    document.getElementById('forgotPasswordLink').addEventListener('click', showForgotPassword);
-    document.getElementById('backToLogin').addEventListener('click', showLoginForm);
-    document.getElementById('sendResetLink').addEventListener('click', sendPasswordReset);
+    document.getElementById('forgotPasswordLink')?.addEventListener('click', showForgotPassword);
+    document.getElementById('backToLogin')?.addEventListener('click', showLoginForm);
+    document.getElementById('sendResetLink')?.addEventListener('click', sendPasswordReset);
     
     // Setup cascade dropdowns
     setupCascadeDropdowns();
@@ -154,9 +184,9 @@ function setupEventListeners() {
     document.addEventListener('keydown', function(event) {
         if (event.ctrlKey && event.key === 'r') {
             event.preventDefault();
-            if (document.getElementById('addMemberModal').classList.contains('show')) {
+            if (document.getElementById('addMemberModal')?.classList.contains('show')) {
                 resetMemberForm();
-            } else if (document.getElementById('addEmployeeModal').classList.contains('show')) {
+            } else if (document.getElementById('addEmployeeModal')?.classList.contains('show')) {
                 resetEmployeeForm();
             }
         }
@@ -172,33 +202,97 @@ function setupEventListeners() {
     document.getElementById('dashboardDateFrom')?.addEventListener('change', loadDashboardData);
     document.getElementById('dashboardDateTo')?.addEventListener('change', loadDashboardData);
     document.getElementById('dashboardDistrict')?.addEventListener('change', loadDashboardData);
-}
+    
+    // Update member button in edit modal
+    document.getElementById('updateMemberBtn')?.addEventListener('click', async () => {
+        try {
+            const id = document.getElementById('editMemberId').value;
 
-// UI update function
-function updateUIForRole() {
-    // Update user display
-    if (currentUser && currentUser.name) {
-        document.getElementById('userName').textContent = currentUser.name;
-        document.getElementById('dropdownUserName').textContent = currentUser.name;
-        document.getElementById('dropdownUserEmail').textContent = currentUser.email;
-    } else {
-        document.getElementById('userName').textContent = 'User';
-        document.getElementById('dropdownUserName').textContent = 'User';
-        document.getElementById('dropdownUserEmail').textContent = '';
+            const updates = {
+                name: document.getElementById('editMemberName').value,
+                father_name: document.getElementById('editFatherName').value,
+                age: parseInt(document.getElementById('editAge').value),
+                gender: document.getElementById('editGender').value,
+                aadhar_number: document.getElementById('editAadhar').value,
+                contact_number: document.getElementById('editContact').value,
+                district_id: document.getElementById('editDistrict').value,
+                block_id: document.getElementById('editBlock').value,
+                gp_id: document.getElementById('editGP').value,
+                address: document.getElementById('editAddress').value,
+                status: document.getElementById('editStatus').value,
+                updated_at: new Date().toISOString()
+            };
+
+            // Get district name for display
+            if (updates.district_id) {
+                const { data: districtData } = await supabase
+                    .from('districts')
+                    .select('name')
+                    .eq('id', updates.district_id)
+                    .single();
+                
+                if (districtData) {
+                    updates.district = districtData.name;
+                }
+            }
+
+            const { error } = await supabase
+                .from('members')
+                .update(updates)
+                .eq('id', id);
+
+            if (error) throw error;
+
+            alert('✅ Member updated successfully!');
+            $('#editMemberModal').modal('hide');
+            loadMembers();
+        } catch (err) {
+            console.error('Error updating member:', err.message);
+            alert('❌ Failed to update member: ' + err.message);
+        }
+    });
+    
+    // Profile form submit
+    document.getElementById('profileForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        alert('Profile update would be implemented here');
+    });
+    
+    // Change password form submit
+    document.getElementById('changePasswordForm')?.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        alert('Password change would be implemented here');
+    });
+
+    // Update the navigation event listener in app.js
+document.addEventListener('click', function(e) {
+    // Check if clicked on nav link with data-section
+    const navLink = e.target.closest('.nav-link[data-section]');
+    
+    if (navLink) {
+        e.preventDefault();
+        const sectionId = navLink.getAttribute('data-section');
+        console.log(`Nav clicked: ${sectionId} from element:`, navLink);
+        navigateToSection(sectionId);
+        return;
     }
-
-    // Show user role info
-    console.log('Current user role:', currentRole);
+    
+    // Handle sidebar menu toggle clicks (main menu items without data-section)
+    const treeviewLink = e.target.closest('.has-treeview > .nav-link');
+    if (treeviewLink) {
+        e.preventDefault();
+        // Let Bootstrap handle the treeview toggle
+        // Don't call navigateToSection
+        return;
+    }
+});
 }
 
 // Show main application
 function showApp() {
-    console.log('Showing application for user:', currentUser?.email);
+    console.log('Showing application for user:', window.currentUser?.email);
     loginSection.classList.add('hidden');
     appSection.classList.remove('hidden');
-
-    // Navigate to dashboard by default
-    navigateToSection('dashboard');
 }
 
 // Show login page
@@ -216,14 +310,3 @@ function showLogin() {
     document.getElementById('dropdownUserName').textContent = 'User';
     document.getElementById('dropdownUserEmail').textContent = '';
 }
-
-// Simple search function (can be moved to members.js)
-window.searchMembers = function() {
-    const searchTerm = document.getElementById('memberSearch').value.toLowerCase();
-    const rows = document.querySelectorAll('#membersTable tbody tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? '' : 'none';
-    });
-};
