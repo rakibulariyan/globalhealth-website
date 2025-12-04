@@ -52,7 +52,6 @@ window.navigateToSection = function(sectionId) {
         }
         
         // Load section data
-        loadSectionData(sectionId);
     } else {
         console.error(`Section ${sectionId} not found in HTML`);
         showAccessDenied(sectionId);
@@ -171,30 +170,3 @@ function getSectionName(sectionId) {
     return sectionNames[sectionId] || sectionId;
 }
 
-// Add to loadSectionData function
-case 'district-master':
-    if (typeof loadDistricts === 'function') {
-        await loadDistricts();
-    }
-    break;
-    
-case 'block-master':
-    if (typeof loadBlocks === 'function') {
-        await loadBlocks();
-    }
-    if (typeof loadDistrictsForBlocks === 'function') {
-        await loadDistrictsForBlocks();
-    }
-    break;
-    
-case 'gp-master':
-    if (typeof loadGPs === 'function') {
-        await loadGPs();
-    }
-    if (typeof loadBlocksForGPs === 'function') {
-        await loadBlocksForGPs();
-    }
-    if (typeof loadDistrictsForGPs === 'function') {
-        await loadDistrictsForGPs();
-    }
-    break;

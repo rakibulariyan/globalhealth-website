@@ -126,16 +126,52 @@ function setupEventListeners() {
     // Logout
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     
-    // Navigation - Handle ALL nav link clicks
-    document.addEventListener('click', function(e) {
-        // Check if clicked on nav link or its child
-        if (e.target.matches('.nav-link[data-section]') || e.target.closest('.nav-link[data-section]')) {
-            e.preventDefault();
-            const link = e.target.matches('.nav-link[data-section]') ? e.target : e.target.closest('.nav-link[data-section]');
-            const sectionId = link.getAttribute('data-section');
-            console.log(`Nav clicked: ${sectionId}`);
-            navigateToSection(sectionId);
+    // ============================================
+// CLEAN NAVIGATION HANDLER (FINAL VERSION)
+// ============================================
+document.addEventListener("click", function (e) {
+
+    // ----------------------------
+    // 1. Main Section Navigation
+    // ----------------------------
+    const navLink = e.target.closest(".nav-link[data-section]");
+    if (navLink) {
+        e.preventDefault();
+
+        const sectionId = navLink.getAttribute("data-section");
+        console.log(`Nav clicked: ${sectionId}`);
+
+        window.navigateToSection(sectionId);
+        return;
+    }
+
+    // ----------------------------
+    // 2. Master Data Navigation
+    // ----------------------------
+    const masterTabTrigger = e.target.closest("[data-master-tab]");
+    if (masterTabTrigger) {
+        e.preventDefault();
+
+        const tab = masterTabTrigger.getAttribute("data-master-tab");
+        console.log(`Master Data Tab clicked: ${tab}`);
+
+        // First show the Master section
+        window.navigateToSection("master");
+
+        // Then activate correct tab in Master UI
+        const tabBtn = document.querySelector(
+            `#masterTabs .nav-link[data-master="${tab}"]`
+        );
+
+        if (tabBtn) {
+            tabBtn.click();
         }
+
+        return;
+    }
+
+    
+
         
         // Handle sidebar menu toggle clicks
         if (e.target.matches('.has-treeview > .nav-link') || e.target.closest('.has-treeview > .nav-link')) {
@@ -179,6 +215,7 @@ function setupEventListeners() {
     // Reset Form Functionality
     document.getElementById('resetMemberFormBtn')?.addEventListener('click', resetMemberForm);
     document.getElementById('resetEmployeeFormBtn')?.addEventListener('click', resetEmployeeForm);
+
 
     // Add keyboard shortcut for reset (Ctrl+R)
     document.addEventListener('keydown', function(event) {

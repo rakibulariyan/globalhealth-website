@@ -1,3 +1,43 @@
+// ========== DISTRICT MASTER UI LOADER ==========
+function showDistrictMasterUI() {
+    document.getElementById("masterContent").innerHTML = `
+        <div id="districtMasterSection" class="p-2">
+
+            <div class="d-flex justify-content-between mb-3">
+                <input type="text" id="districtSearch"
+                    class="form-control w-25"
+                    placeholder="Search district...">
+
+                <button class="btn btn-primary" data-toggle="modal" data-target="#addDistrictModal">
+                    <i class="fas fa-plus"></i> Add District
+                </button>
+            </div>
+
+            <table class="table table-bordered" id="districtsTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>District Name</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+            <ul class="pagination" id="districtPagination"></ul>
+        </div>
+    `;
+}
+
+// ========== DISTRICT MASTER TAB CLICK ==========
+$(document).on("click", '[data-master-tab="districts"]', function () {
+    console.log("District Master → OPEN");
+    showDistrictMasterUI();
+    loadDistricts();
+});
+
+
 // district-master.js - Complete District CRUD with CSV Export
 
 // Load districts with pagination and search
