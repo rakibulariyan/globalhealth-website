@@ -242,7 +242,7 @@
                             </a>
                             <ul class="nav nav-treeview">
                                 <li class="nav-item">
-                                    <a href="#" class="nav-link" data-section="master">
+                                    <a href="#" class="nav-link" data-section="master" data-master-tab="districts">
                                         <i class="far fa-circle nav-icon"></i>
                                         <p>District Master</p>
                                     </a>
@@ -862,32 +862,70 @@
                         </div>
                     </div>
 
-                    <!-- Master Data Section (Master) -->
-                     <div class="section" id="masterContent">
+                    <!-- Master Data Section (District Master) -->
+                     <div class="section" id="master" style="display: none;">
                         <div class="content-header">
                             <div class="container-fluid">
                                 <div class="row mb-2">
                                     <div class="col-sm-6">
-                                        <h1 class="m-0">Master Data</h1>
+                                        <h1 class="m-0">Master Data Management</h1>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div class="card">
                             <div class="card-body">
+                                <!-- Tabs for Master Data -->
                                  <ul class="nav nav-tabs" id="masterTabs">
                                     <li class="nav-item">
-                                        <a class="nav-link active" data-master="districts"></a>
+                                        <a class="nav-link active" data-master="districts" href="#">Districts</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link" data-master="blocks"></a>
+                                        <a class="nav-link" data-master="blocks" href="#">Blocks</a>
                                     </li>
                                     <li class="nav-item">
-                                        <a class="nav-link" data-master="gps"></a>
+                                        <a class="nav-link" data-master="gps" href="#">Gram Panchayats</a>
                                     </li>
                                  </ul>
-                                 <div id="masterContent" class="mt-3"></div>
-                              </div>
+                                 <div id="masterContent" class="mt-3">
+                                     <!-- Content will be loaded here by master.js -->
+                                 </div>
+                            </div>
+                        </div>
+
+                        <!-- Blocks Master Section -->
+                         <div class="section" id="blocks-master" style="display: none;">
+                            <div class="content-header">
+                                <div class="container-fluid">
+                                    <div class="row mb-2">
+                                        <div class="col-sm-6">
+                                            <h1 class="m-0">Block Master Data</h1>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-body">
+                                    <p>Block master data management - Note: This is also handled in the Master Data section.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- GP Master Section -->
+                         <div class="section" id="gps-master" style="display: none;">
+                            <div class="content-header">
+                                <div class="container-fluid">
+                                    <div class="row mb-2">
+                                        <div class="col-sm-6">
+                                            <h1 class="m-0">GP Master Data</h1>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card">
+                                <div class="card-body">
+                                    <p>GP master data management - Note: This is also handled in the Master Data section.</p>
+                                </div>
                             </div>
                         </div>
 
@@ -1416,9 +1454,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     
-    <!-- Custom JavaScript - Order -->
+    <!-- Custom JavaScript - Order Matters! -->
     <script src="js/supabase-config.js"></script>
-
     <script src="js/pdf-generator.js"></script>
     <script src="js/master.js"></script>
     <script src="js/app.js"></script>
