@@ -1,718 +1,511 @@
-console.log('=== GLOBAL HEALTH APP LOADED ===');
+// ============================================
+// GLOBAL HEALTH MANAGEMENT SYSTEM - APP.JS
+// ============================================
+// Main application file - Consolidates all functionality
+// ============================================
 
-// Current user and role
-let currentUser = null;
-let currentRole = null;
+// Global variables
+window.currentUser = null;
+window.currentRole = null;
+window.currentUserData = null;
 
-// DOM Elements
-const loginSection = document.getElementById('loginSection');
-const appSection = document.getElementById('appSection');
-const loginForm = document.getElementById('loginForm');
+// ============================================
+// 1. PERMISSIONS & ROLE MANAGEMENT
+// ============================================
 
-// Initialize application
-document.addEventListener('DOMContentLoaded', function() {
-    initializeApp();
-});
+const sectionPermissions = {
+    'dashboard': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
+    'kpis': ['admin', 'coordinator'],
+    'activity-logs': ['admin'],
+    'geo-heatmap': ['admin', 'coordinator'],
+    'search-members': ['admin', 'coordinator', 'health_worker', 'employee'],
+    'search-employees': ['admin', 'coordinator'],
+    'search-payments': ['admin', 'coordinator', 'accountant'],
+    'advanced-filters': ['admin', 'coordinator'],
+    'geo-smart-search': ['admin', 'coordinator'],
+    'master': ['admin', 'coordinator'],
+    'blocks-master': ['admin', 'coordinator'],
+    'gps-master': ['admin', 'coordinator'],
+    'add-employee': ['admin'],
+    'employee-list': ['admin', 'coordinator'],
+    'employee-details': ['admin', 'coordinator'],
+    'salary-slips': ['admin', 'coordinator'],
+    'health-worker-performance': ['admin', 'coordinator'],
+    'performance-scorecard': ['admin', 'coordinator'],
+    'register-member': ['admin', 'coordinator', 'health_worker'],
+    'member-list': ['admin', 'coordinator', 'health_worker', 'employee'],
+    'member-view': ['admin', 'coordinator', 'health_worker', 'employee'],
+    'member-card': ['admin', 'coordinator', 'health_worker', 'employee'],
+    'renewal-expiry': ['admin', 'coordinator', 'health_worker'],
+    'beneficiary-management': ['admin', 'coordinator', 'health_worker'],
+    'payment-list': ['admin', 'coordinator', 'accountant'],
+    'pending-payments': ['admin', 'coordinator', 'accountant'],
+    'price-master': ['admin', 'coordinator'],
+    'revenue-breakdown': ['admin', 'coordinator'],
+    'summary-reports': ['admin', 'coordinator', 'accountant'],
+    'daily-summary': ['admin', 'coordinator', 'accountant'],
+    'weekly-summary': ['admin', 'coordinator', 'accountant'],
+    'monthly-performance': ['admin', 'coordinator', 'accountant'],
+    'user-roles': ['admin'],
+    'permission-matrix': ['admin'],
+    'system-logs': ['admin'],
+    'backups': ['admin'],
+    'financial-audit': ['admin', 'coordinator'],
+    'data-export-logs': ['admin', 'coordinator'],
+    'district-performance-audit': ['admin', 'coordinator'],
+    'import-members': ['admin', 'coordinator'],
+    'import-employees': ['admin', 'coordinator'],
+    'import-geo-data': ['admin', 'coordinator'],
+    'raise-ticket': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee'],
+    'tickets-list': ['admin', 'coordinator'],
+    'resolution-history': ['admin', 'coordinator'],
+    'validation': ['admin', 'coordinator', 'health_worker', 'employee'],
+    'profile': ['admin', 'coordinator', 'health_worker', 'accountant', 'employee']
+};
 
-// Application initialization
-async function initializeApp() {
-    console.log('Initializing app...');
-    showLogin();
-    setupEventListeners();
+window.checkPermission = function(sectionId) {
+    if (!window.currentUser || !window.currentRole) return false;
+    if (window.currentRole === 'admin') return true;
+    return sectionPermissions[sectionId]?.includes(window.currentRole) || false;
+};
 
-    try {
-        // ✅ Get current session from Supabase Auth
-        const { data: { session }, error } = await supabase.auth.getSession();
+window.updateUIForRole = function() {
+    if (window.currentUser && window.currentUser.name) {
+        const userNameElement = document.getElementById('userName');
+        const dropdownUserName = document.getElementById('dropdownUserName');
+        const dropdownUserEmail = document.getElementById('dropdownUserEmail');
         
-        if (error) {
-            console.error('Session error:', error);
-            showLogin();
-            return;
-        }
-
-        if (session && session.user) {
-            console.log("✅ Session found:", session.user.email);
-            
-            // ✅ Get employee details to determine role
-            const { data: employee, error: empError } = await supabase
-                .from('employees')
-                .select('*')
-                .eq('email', session.user.email)
-                .single();
-
-            if (empError && empError.code !== 'PGRST116') {
-                console.warn('Employee record fetch warning:', empError);
-            }
-
-            // ✅ Set current user and role
-            currentUser = {
-                id: session.user.id,
-                email: session.user.email,
-                name: employee?.name || session.user.email.split('@')[0],
-                role: employee?.role || 'employee'
-            };
-            currentRole = employee?.role || 'employee';
-
-            console.log('✅ User restored:', currentUser);
-            
-            // ✅ Show app with proper UI
-            showApp();
-            updateUIForRole();
-            loadDashboardData();
-            
-        } else {
-            console.log("❌ No active session");
-            showLogin();
-        }
-    } catch (error) {
-        console.error('Initialization error:', error);
-        showLogin();
+        if (userNameElement) userNameElement.textContent = window.currentUser.name;
+        if (dropdownUserName) dropdownUserName.textContent = window.currentUser.name;
+        if (dropdownUserEmail) dropdownUserEmail.textContent = window.currentUser.email;
     }
-}
-
-// Setup all event listeners
-function setupEventListeners() {
-  // Setup auth state listener
-  supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session?.user?.email);
-
-      switch (event) {
-          case 'SIGNED_IN':
-            console.log('User signed in');
-            break;
-
-            case 'SIGNED_OUT':
-            console.log('User signed out');
-            currentUser = null;
-            currentRole = null;
-            showLogin();
-            break;
-
-            case 'TOKEN_REFRESHED':
-            console.log('Token refreshed');
-            break;
-
-            case 'USER_UPDATED':
-            console.log('User updated');
-            break;
-      }
-    });
-
-    // Login form
-    loginForm.addEventListener('submit', handleLogin);
-
-    // Logout
-    document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-    
-    // Navigation
-    document.addEventListener('click', function(e) {
-        if (e.target.matches('.nav-link[data-section]') || e.target.closest('.nav-link[data-section]')) {
-            e.preventDefault();
-            const link = e.target.matches('.nav-link[data-section]') ? e.target : e.target.closest('.nav-link[data-section]');
-            navigateToSection(link.getAttribute('data-section'));
-        }
-    });
-
-    // Employee management
-    document.getElementById('saveEmployeeBtn').addEventListener('click', saveEmployee);
-    
-    // Member management
-    document.getElementById('saveMemberBtn').addEventListener('click', saveMember);
-
-    // Family member functionality
-    setupFamilyMemberHandlers();
-
-    // Member search
-    document.getElementById('memberSearch').addEventListener('input', searchMembers);
-    
-    // Forgot password
-    document.getElementById('forgotPasswordLink').addEventListener('click', showForgotPassword);
-    document.getElementById('backToLogin').addEventListener('click', showLoginForm);
-    document.getElementById('sendResetLink').addEventListener('click', sendPasswordReset);
-    
-    // Setup cascade dropdowns
-    setupCascadeDropdowns();
-
-    // Payment search
-    document.getElementById('searchPayments')?.addEventListener('click', loadPayments);
-    document.getElementById('resetPayments')?.addEventListener('click', loadPayments);
-
-    // Partner validation
-    document.getElementById('validateBtn')?.addEventListener('click', validateMemberCard);
-
-    // Search functionality
-    document.getElementById('searchBtn')?.addEventListener('click', advancedSearchMembers);
-    document.getElementById('resetSearchBtn')?.addEventListener('click', resetSearch);
-
-    // Add Reset Form Functionality
-    document.getElementById('resetMemberFormBtn')?.addEventListener('click', function() {
-      resetMemberForm();
-    });
-
-    function resetMemberForm() {
-      if (confirm('Are you sure you want to reset the member registration form? All entered data will be lost.')) {
-        // Reset main form
-        document.getElementById('addMemberForm').reset();
-
-        // Clear family members table
-        document.getElementById('familyBody').innerHTML = '';
-
-        // Reset cascade dropdowns
-        document.getElementById('memberDistrictId').innerHTML = '<option value="">Select District</option>';
-        document.getElementById('memberBlockId').innerHTML = '<option value="">Select Block</option>';
-        document.getElementById('memberBlockId').disabled = true;
-        document.getElementById('memberGPId').innerHTML = '<option value="">Select GP</option>';
-        document.getElementById('memberGPId').disabled = true;
-
-        // Reload districts
-        loadDistrictOptions('memberDistrictId', true);
-        console.log('Member form reset successfully.');
-      }
-    }
-
-    // add Reset Form Functionality for Employee Form
-    document.getElementById('resetEmployeeFormBtn')?.addEventListener('click', function() {
-    resetEmployeeForm();
-    });
-
-    function resetEmployeeForm() {
-      if (confirm('Are you sure you want to reset the employee form?')) {
-        // Reset main form
-        document.getElementById('addEmployeeForm').reset();
-
-        // Reset cascade dropdowns
-        document.getElementById('empDistrict').innerHTML = '<option value="">Select District</option>';
-        document.getElementById('empBlock').innerHTML = '<option value="">Select Block</option>';
-        document.getElementById('empBlock').disabled = true;
-        document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
-        document.getElementById('empGP').disabled = true;
-
-        // Reload districts (optional)
-        loadDistrictOptions('empDistrict', true);
-        console.log('Employee form reset successfully.');
-      }
-    }
-
-    // Add keyboard shortcut for reset (Ctrl+R)
-    document.addEventListener('keydown', function(event) {
-        if (event.ctrlKey && event.key === 'r') {
-              event.preventDefault();
-            if (document.getElementById('addMemberModal').classList.contains('show')) {
-            resetMemberForm();
-            } else if (document.getElementById('addEmployeeModal').classList.contains('show')) {
-            resetEmployeeForm();
-        }
-        }
-    });
-
-    // Add this to app.js setupEventListeners()
-     document.getElementById('changePhotoBtn')?.addEventListener('click', function() {
-      $('#changePhotoModal').modal('show');
-      console.log('Change Photo modal opened');
-    });
-
-    // dashboard data filter by date range
-    document.getElementById('dashboardDateFrom')?.addEventListener('change', loadDashboardData);
-    document.getElementById('dashboardDateTo')?.addEventListener('change', loadDashboardData);
-    document.getElementById('dashboardDistrict')?.addEventListener('change', loadDashboardData);
-
-}
+};
 
 
-// Setup cascade dropdown functionality
-   function setupCascadeDropdowns() {
-    // Employee Modal Cascade
-    $('#addEmployeeModal').on('show.bs.modal', async function () {
-        await loadDistrictOptions('empDistrict', true);
-
-    });
-
-    // Employee District Changed
-    document.getElementById('empDistrict')?.addEventListener('change', async function () {
-        const districtId = this.value;
-        await loadBlockOptions('empBlock', districtId, true);
-        document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
-        document.getElementById('empGP').disabled = true;
-    });
-
-    // Employee Block Changed
-    document.getElementById('empBlock')?.addEventListener('change', async function () {
-        const blockId = this.value;
-        if (blockId) {
-            await loadGpOptions('empGP', blockId, true);
-        } else {
-            document.getElementById('empGP').innerHTML = '<option value="">Select GP</option>';
-            document.getElementById('empGP').disabled = true;
-        }
-    });
-
-    // Member Modal Cascade
-    $('#addMemberModal').on('show.bs.modal', async function () {
-        await loadDistrictOptions('memberDistrictId', true);
-
-    });
-
-    // Member District Changed
-    document.getElementById('memberDistrictId')?.addEventListener('change', async function () {
-        const districtId = this.value;
-        await loadBlockOptions('memberBlockId', districtId, true);
-        document.getElementById('memberGPId').innerHTML = '<option value="">Select GP</option>';
-        document.getElementById('memberGPId').disabled = true;
-    });
-
-    // Member Block Changed
-    document.getElementById('memberBlockId')?.addEventListener('change', async function () {
-        const blockId = this.value;
-        if (blockId) {
-            await loadGpOptions('memberGPId', blockId, true);
-        } else {
-            document.getElementById('memberGPId').innerHTML = '<option value="">Select GP</option>';
-            document.getElementById('memberGPId').disabled = true;
-        }
-    });
-}
-
-// Separate function for family member handlers
-function setupFamilyMemberHandlers() {
+window.setupFamilyMemberHandlers = function() {
     const addFamilyBtn = document.getElementById('addFamilyBtn');
     const familyBody = document.getElementById('familyBody');
-
-    if (addFamilyBtn && familyBody) {
-        addFamilyBtn.addEventListener('click', () => {
-            if (familyBody.children.length >= 4) {
-                alert("You can only add up to 4 family members.");
-                return;
-            }
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><input type="text" class="form-control form-control-sm fam-name" placeholder="Name" required></td>
-                <td><input type="number" class="form-control form-control-sm fam-age" placeholder="Age" required min="1" max="120"></td>
-                <td>
-                    <select class="form-control form-control-sm fam-relation" required>
-                        <option value="">Select Relation</option>
-                        <option value="Spouse">Spouse</option>
-                        <option value="Father">Father</option>
-                        <option value="Mother">Mother</option>
-                        <option value="Son">Son</option>
-                        <option value="Daughter">Daughter</option>
-                        <option value="Brother">Brother</option>
-                        <option value="Sister">Sister</option>
-                    </select>
-                </td>
-                <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-danger removeFam">×</button>
-                </td>
-            `;
-            familyBody.appendChild(tr);
-
-            // Remove row button
-            tr.querySelector('.removeFam').addEventListener('click', () => tr.remove());
-        });
-    }
-}
-
-// ========== CASCADE DROPDOWN FUNCTIONS ==========
-
-async function loadDistrictOptions(selectId, includeBlank = true) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
     
-    select.innerHTML = includeBlank ? '<option value="">Select District</option>' : '';
+    if (!addFamilyBtn || !familyBody) return;
     
-    try {
-        const { data, error } = await supabase
-            .from('districts')
-            .select('id, name')
-            .order('name');
-            
-        if (error) throw error;
-        
-        data.forEach(d => {
-            const opt = document.createElement('option');
-            opt.value = d.id;
-            opt.textContent = d.name;
-            select.appendChild(opt);
-        });
-    } catch (error) {
-        console.error('Failed to load districts:', error);
-    }
-}
-
-async function loadBlockOptions(selectId, districtId, includeBlank = true) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    
-    select.innerHTML = includeBlank ? '<option value="">Select Block</option>' : '';
-    select.disabled = true;
-    
-    if (!districtId) return;
-    
-    try {
-        const { data, error } = await supabase
-            .from('blocks')
-            .select('id, name')
-            .eq('district_id', districtId)
-            .order('name');
-            
-        if (error) throw error;
-        
-        data.forEach(b => {
-            const opt = document.createElement('option');
-            opt.value = b.id;
-            opt.textContent = b.name;
-            select.appendChild(opt);
-        });
-        
-        select.disabled = false;
-    } catch (error) {
-        console.error('Failed to load blocks:', error);
-    }
-}
-
-async function loadGpOptions(selectId, blockId, includeBlank = true) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-    
-    select.innerHTML = includeBlank ? '<option value="">Select GP</option>' : '';
-    select.disabled = true;
-    
-    if (!blockId) return;
-    
-    try {
-        const { data, error } = await supabase
-            .from('gps')
-            .select('id, name')
-            .eq('block_id', blockId)
-            .order('name');
-            
-        if (error) throw error;
-        
-        data.forEach(g => {
-            const opt = document.createElement('option');
-            opt.value = g.id;
-            opt.textContent = g.name;
-            select.appendChild(opt);
-        });
-        
-        select.disabled = false;
-    } catch (error) {
-        console.error('Failed to load GPs:', error);
-    }
-}
-
-// WORKING LOGIN FUNCTION - Uses Supabase Auth
-async function handleLogin(e) {
-  e.preventDefault();
-
-  const email = document.getElementById('loginEmail').value;
-  const password = document.getElementById('loginPassword').value;
-
-  if (!email || !password) {
-    alert('Please enter both email and password');
-    return;
-  }
-
-  try {
-    console.log('Attempting Supabase Auth login for:', email);
-
-    // Use Supabase Authentication
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password
+    addFamilyBtn.addEventListener('click', function() {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><input type="text" class="form-control form-control-sm fam-name" placeholder="Name" required></td>
+            <td><input type="number" class="form-control form-control-sm fam-age" placeholder="Age" min="0" max="120" required></td>
+            <td>
+                <select class="form-control form-control-sm fam-relation">
+                    <option value="spouse">Spouse</option>
+                    <option value="son">Son</option>
+                    <option value="daughter">Daughter</option>
+                    <option value="father">Father</option>
+                    <option value="mother">Mother</option>
+                    <option value="brother">Brother</option>
+                    <option value="sister">Sister</option>
+                </select>
+            </td>
+            <td><button type="button" class="btn btn-sm btn-danger remove-family"><i class="fas fa-times"></i></button></td>
+        `;
+        familyBody.appendChild(row);
     });
+    
+    familyBody.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-family') || e.target.closest('.remove-family')) {
+            const row = e.target.closest('tr');
+            if (row) row.remove();
+        }
+    });
+};
 
-    if (error) {
-      console.error('Supabase Auth error:', error);
-      throw error;
+window.resetMemberForm = function() {
+    const form = document.getElementById('addMemberForm');
+    if (form) {
+        form.reset();
+        document.getElementById('familyBody').innerHTML = '';
+        document.getElementById('memberBlockId').innerHTML = '<option value="">Select District First</option>';
+        document.getElementById('memberGPId').innerHTML = '<option value="">Select Block First</option>';
+        showToast('Member form reset', 'info');
     }
+};
 
-    if (!data || !data.user) {
-      throw new Error('No user found after authentication');
+window.resetEmployeeForm = function() {
+    const form = document.getElementById('addEmployeeForm');
+    if (form) {
+        form.reset();
+        document.getElementById('empBlock').innerHTML = '<option value="">Select District First</option>';
+        document.getElementById('empGP').innerHTML = '<option value="">Select Block First</option>';
+        showToast('Employee form reset', 'info');
     }
+};
 
-    console.log('Supabase Auth successful:', data.user);
+window.showToast = function(msg, type = 'success') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'info' ? 'info' : 'success'} alert-dismissible fade show`;
+    toast.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    toast.innerHTML = `
+        ${msg}
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentNode) toast.remove();
+    }, 4000);
+};
 
-    // Now get employee details from database
-    const { data: employee, error: empError } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('email', email)
-      .single();
+// ============================================
+// 3. AUTHENTICATION
+// ============================================
 
-    if (empError && empError.code !== 'PGRST116') { // PGRST116 can be "No rows" — still okay
-      console.warn('Warning fetching employee record:', empError);
+async function initializeAuth() {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (session && session.user) {
+        console.log('User already logged in:', session.user.email);
+        await handleSuccessfulLogin(session.user);
+    } else {
+        showLoginSection();
     }
-
-    // --- SET USER SESSION (important for RLS) ---
-    currentUser = {
-      id: data.user.id,
-      email: data.user.email,
-      name: employee?.name || 'User',
-      role: employee?.role || 'employee'
-    };
-    currentRole = employee?.role || 'employee';
-
-    console.log('Login successful:', currentUser);
-
-    // Update UI and show app
-    updateUIForRole();
-    showApp();
-    loadDashboardData();
-
-  } catch (error) {
-    console.error('Login failed:', error);
-    alert('Login failed: ' + (error.message || JSON.stringify(error)));
-
-    // Helpful hint for common scenario
-    if (error && error.message && error.message.toLowerCase().includes('invalid')) {
-      alert('Please make sure:\n1. User exists in Supabase Authentication\n2. Email and password are correct\n3. User is confirmed (not just invited)');
-    }
-  }
+    
+    // Listen for auth changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session) {
+            await handleSuccessfulLogin(session.user);
+        } else if (event === 'SIGNED_OUT') {
+            showLoginSection();
+        }
+    });
 }
 
-// UI update function (must be defined outside handleLogin)
-function updateUIForRole() {
-  // Update user display (safe guards)
-  if (currentUser && currentUser.name) {
-    document.getElementById('userName').textContent = currentUser.name;
-    document.getElementById('dropdownUserName').textContent = currentUser.name;
-    document.getElementById('dropdownUserEmail').textContent = currentUser.email;
-  } else {
-    document.getElementById('userName').textContent = 'User';
-    document.getElementById('dropdownUserName').textContent = 'User';
-    document.getElementById('dropdownUserEmail').textContent = '';
-  }
+async function handleSuccessfulLogin(user) {
+    try {
+        // Get user data from employees table
+        const { data: employeeData, error } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('email', user.email)
+            .single();
+        
+        if (error) {
+            console.error('Error fetching user data:', error);
+            showToast('Error loading user profile', 'error');
+            return;
+        }
+        
+        // Set global user data
+        window.currentUser = {
+            ...user,
+            name: employeeData.name || user.email.split('@')[0],
+            role: employeeData.role,
+            employeeId: employeeData.employee_id,
+            photoUrl: employeeData.photo_url
+        };
+        
+        window.currentRole = employeeData.role;
+        window.currentUserData = employeeData;
+        
+        // Update UI
+        updateUIForRole();
+        updateUserPhoto();
+        
+        // Load initial data
+        await loadDashboardData();
+        await loadEmployeeList();
+        await loadMemberList();
+        await loadPaymentList();
 
-  // Show/hide admin sections
-  document.querySelectorAll('.admin-only').forEach(el => {
-    el.style.display = (currentRole === 'admin') ? 'block' : 'none';
-  });
-
-  // Show/hide employee-admin sections
-  document.querySelectorAll('.employee-admin').forEach(el => {
-    el.style.display = (currentRole === 'admin' || currentRole === 'coordinator' || currentRole === 'health_worker') ? 'block' : 'none';
-  });
-
-  // Show/hide accountant sections
-  document.querySelectorAll('.accountant-only').forEach(el => {
-    el.style.display = (currentRole === 'admin' || currentRole === 'accountant') ? 'block' : 'none';
-  });
+        // Show app section
+        showAppSection();
+        
+        showToast(`Welcome back, ${window.currentUser.name}!`, 'success');
+        
+    } catch (error) {
+        console.error('Login error:', error);
+        showToast('Login error - please contact admin', 'error');
+    }
 }
 
-// Show main application
-function showApp() {
-    console.log('Showing application for user:', currentUser?.email);
-    loginSection.classList.add('hidden');
-    appSection.classList.remove('hidden');
+function showLoginSection() {
+    document.getElementById('loginSection').classList.remove('hidden');
+    document.getElementById('appSection').classList.add('hidden');
+    window.currentUser = null;
+    window.currentRole = null;
+}
 
-    // Navigate to dashboard by default
+function showAppSection() {
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('appSection').classList.remove('hidden');
     navigateToSection('dashboard');
 }
 
-// Show login page
-function showLogin() {
-    console.log('Showing login page');;
-    loginSection.classList.remove('hidden');
-    appSection.classList.add('hidden');
-
-    // Reset login form
-    document.getElementById('loginForm').reset();
-    document.getElementById('forgotPasswordSection').style.display = 'none';
-
-    // Reset any user info displays
-    document.getElementById('userName').textContent = 'User';
-    document.getElementById('dropdownUserName').textContent = 'User';
-    document.getElementById('dropdownUserEmail').textContent = '';
+function updateUserPhoto() {
+    const userPhoto = document.getElementById('userPhoto');
+    const dropdownUserPhoto = document.getElementById('dropdownUserPhoto');
+    const userIcon = document.getElementById('userIcon');
+    const dropdownUserIcon = document.getElementById('dropdownUserIcon');
+    
+    if (window.currentUser?.photoUrl) {
+        userPhoto.src = window.currentUser.photoUrl;
+        userPhoto.style.display = 'block';
+        userIcon.style.display = 'none';
+        
+        dropdownUserPhoto.src = window.currentUser.photoUrl;
+        dropdownUserPhoto.style.display = 'block';
+        dropdownUserIcon.style.display = 'none';
+    } else {
+        userPhoto.style.display = 'none';
+        userIcon.style.display = 'inline-block';
+        
+        dropdownUserPhoto.style.display = 'none';
+        dropdownUserIcon.style.display = 'block';
+    }
 }
 
-// Navigation
-function navigateToSection(sectionId) {
+// ============================================
+// 4. NAVIGATION
+// ============================================
+
+window.navigateToSection = function(sectionId) {
+    console.log(`Navigating to: ${sectionId}`);
+    
     // Hide all sections
     document.querySelectorAll('.section').forEach(section => {
         section.classList.remove('active');
+        section.style.display = 'none';
     });
     
-    // Remove active from all nav links
     document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.remove('active');
     });
     
-    // Show selected section
-    document.getElementById(sectionId).classList.add('active');
-    
-    // Activate nav link
-    const navLink = document.querySelector(`.nav-link[data-section="${sectionId}"]`);
-    if (navLink) {
-        navLink.classList.add('active');
+    // Check permission
+    if (!checkPermission(sectionId)) {
+        showAccessDenied(sectionId);
+        
+        const navLink = document.querySelector(`.nav-link[data-section="${sectionId}"]`);
+        if (navLink) navLink.classList.add('active');
+        return;
     }
     
-    // Load section data
-    loadSectionData(sectionId);
-}
+    // Show section
+    const targetSection = document.getElementById(sectionId);
+    if (targetSection) {
+        targetSection.classList.add('active');
+        targetSection.style.display = 'block';
+        
+        const navLink = document.querySelector(`.nav-link[data-section="${sectionId}"]`);
+        if (navLink) navLink.classList.add('active');
+        
+        // Load section-specific data
+        loadSectionData(sectionId);
+    } else {
+        console.error(`Section ${sectionId} not found`);
+        showAccessDenied(sectionId);
+    }
+};
 
-// Load data for specific section
+window.showAccessDenied = function(sectionId) {
+    const accessDeniedSection = document.getElementById('accessDeniedSection');
+    if (!accessDeniedSection) return;
+    
+    const sectionNames = {
+        'dashboard': 'Dashboard Overview',
+        'employee-list': 'Employee List',
+        'member-list': 'Member List',
+        'payment-list': 'Payment List',
+        'validation': 'Partner Validation',
+        'profile': 'My Profile'
+    };
+    
+    const sectionName = sectionNames[sectionId] || sectionId;
+    
+    accessDeniedSection.innerHTML = `
+        <div class="access-denied-container">
+            <div class="access-denied-content">
+                <div class="access-denied-icon"><i class="fas fa-ban"></i></div>
+                <h1>Access Denied – Required Permissions Missing</h1>
+                <p class="lead"><strong>Attempted to access:</strong> ${sectionName}</p>
+                <p>Your account (Role: <strong>${window.currentRole || 'Unknown'}</strong>) does not have authorization for this module.</p>
+                <p><strong>Required Roles:</strong> ${sectionPermissions[sectionId] ? sectionPermissions[sectionId].join(', ') : 'Admin only'}</p>
+                <div class="mt-4">
+                    <button class="btn btn-primary" onclick="navigateToSection('dashboard')">
+                        <i class="fas fa-tachometer-alt me-2"></i>Return to Dashboard
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    accessDeniedSection.style.display = 'block';
+    accessDeniedSection.classList.add('active');
+};
+
 async function loadSectionData(sectionId) {
     switch(sectionId) {
         case 'dashboard':
             await loadDashboardData();
             break;
-        case 'employees':
-            await loadEmployees();
+        case 'employee-list':
+            await loadEmployeeList();
             break;
-        case 'members':
-            await loadMembers();
+        case 'member-list':
+            await loadMemberList();
             break;
-        case 'payments':
-            await loadPayments();
+        case 'payment-list':
+            await loadPaymentList();
             break;
-        case 'reports':
-            await loadReports();
+        case 'validation':
+            // Nothing to load initially
             break;
         case 'profile':
-            await loadProfile();
+            loadProfileData();
             break;
     }
 }
 
-// Load dashboard data
+// ============================================
+// 5. DASHBOARD FUNCTIONS
+// ============================================
+
 async function loadDashboardData() {
     try {
         console.log('Loading dashboard data...');
         
-        // Get all data
-        const { data: members, error: membersError } = await supabase.from('members').select('*');
-        const { data: employees, error: employeesError } = await supabase.from('employees').select('*');
-        const { data: payments, error: paymentsError } = await supabase.from('payments').select('*');
+        // Load stats
+        await loadDashboardStats();
         
-        if (membersError) throw membersError;
-        if (employeesError) throw employeesError;
-        if (paymentsError) throw paymentsError;
+        // Load recent payments
+        await loadRecentPayments();
         
-        // Calculate stats
-        const totalMembers = members ? members.length : 0;
-        const totalEmployees = employees ? employees.length : 0;
-        const totalPayments = payments ? payments.reduce((sum, payment) => sum + parseFloat(payment.amount || 0), 0) : 0;
-        const activeMembers = members ? members.filter(m => m.status === 'active').length : 0;
-        
-        // Update dashboard stats
-        document.getElementById('dashboardStats').innerHTML = `
-            <div class="col-md-3">
-                <div class="card dashboard-card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Total Members</h5>
-                        <div class="stat-number">${totalMembers}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card dashboard-card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Total Employees</h5>
-                        <div class="stat-number">${totalEmployees}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card dashboard-card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Total Payments</h5>
-                        <div class="stat-number">₹${totalPayments}</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card dashboard-card">
-                    <div class="card-body text-center">
-                        <h5 class="card-title">Active Members</h5>
-                        <div class="stat-number">${activeMembers}</div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        // Update recent payments
-        const recentPayments = payments ? payments.slice(0, 5) : [];
-        document.getElementById('recentPayments').innerHTML = recentPayments.length > 0 ? 
-            recentPayments.map(payment => `
-                <div class="alert alert-light">
-                    <strong>${payment.member_id}</strong> - ₹${payment.amount} - ${new Date(payment.payment_date).toLocaleDateString()}
-                </div>
-            `).join('') : 
-            '<p class="text-muted">No recent payments</p>';
-            
     } catch (error) {
         console.error('Error loading dashboard:', error);
-        document.getElementById('dashboardStats').innerHTML = '<div class="col-12"><div class="alert alert-danger">Error loading dashboard data</div></div>';
+        showToast('Error loading dashboard data', 'error');
     }
 }
 
-// Save employee function
-async function saveEmployee() {
+async function loadDashboardStats() {
     try {
-        const name = document.getElementById('empName')?.value?.trim();
-        const fatherName = document.getElementById('empFatherName')?.value?.trim();
-        const email = document.getElementById('empEmail')?.value?.trim();
-        const phone = document.getElementById('empPhone')?.value?.trim();
-        const role = document.getElementById('empRole')?.value;
-        const password = document.getElementById('empPassword')?.value;
-        const address = document.getElementById('empAddress')?.value?.trim();
-        const districtId = document.getElementById('empDistrict')?.value || null;
-        const blockId = document.getElementById('empBlock')?.value || null;
-        const gpId = document.getElementById('empGP')?.value || null;
-
-        // Validation
-        if (!name || !email || !phone || !role || !password) {
-            alert('Please fill all required fields');
-            return;
-        }
-
-        // Generate employee ID
-        const { data: lastEmployee } = await supabase
+        // Get total members
+        const { data: members, error: membersError } = await supabase
+            .from('members')
+            .select('id, status');
+            
+        // Get total employees
+        const { data: employees, error: employeesError } = await supabase
             .from('employees')
-            .select('employee_id')
-            .order('id', { ascending: false })
-            .limit(1);
-
-        let nextId = 100;
-        if (lastEmployee && lastEmployee.length > 0) {
-            const lastId = parseInt(lastEmployee[0].employee_id.replace('E', ''));
-            nextId = lastId + 1;
+            .select('id');
+            
+        // Get total payments
+        const { data: payments, error: paymentsError } = await supabase
+            .from('payments')
+            .select('amount');
+            
+        if (membersError || employeesError || paymentsError) {
+            throw membersError || employeesError || paymentsError;
         }
-        const employeeId = 'E' + nextId.toString().padStart(4, '0');
-
-        // Save to database
-        const { error } = await supabase
-            .from('employees')
-            .insert([{
-                employee_id: employeeId,
-                name: name,
-                father_name: fatherName,
-                email: email,
-                phone: phone,
-                role: role,
-                password: password, // In production, hash this password
-                address: address,
-                district_id: districtId, // foreign keys
-                block_id: blockId, // foreign keys
-                gp_id: gpId // foreign keys
-            }]);
-
-        if (error) throw error;
-
-        alert('Employee created successfully! Employee ID: ' + employeeId);
-        $('#addEmployeeModal').modal('hide');
-        resetEmployeeForm(); // Use the new reset function
-        loadEmployees(); // Refresh the employee list
-
+        
+        const totalMembers = members?.length || 0;
+        const activeMembers = members?.filter(m => m.status === 'active')?.length || 0;
+        const totalEmployees = employees?.length || 0;
+        const totalRevenue = payments?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
+        
+        const statsContainer = document.getElementById('dashboardStats');
+        if (statsContainer) {
+            statsContainer.innerHTML = `
+                <div class="col-md-3">
+                    <div class="card dashboard-card" style="background: linear-gradient(135deg, #667eea, #764ba2);">
+                        <div class="card-body text-center">
+                            <h5 class="card-title"><i class="fas fa-users me-2"></i>Total Members</h5>
+                            <h2 class="stat-number">${totalMembers}</h2>
+                            <p class="mb-0">Active: ${activeMembers}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card dashboard-card" style="background: linear-gradient(135deg, #f093fb, #f5576c);">
+                        <div class="card-body text-center">
+                            <h5 class="card-title"><i class="fas fa-user-tie me-2"></i>Employees</h5>
+                            <h2 class="stat-number">${totalEmployees}</h2>
+                            <p class="mb-0">Field Workforce</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card dashboard-card" style="background: linear-gradient(135deg, #4facfe, #00f2fe);">
+                        <div class="card-body text-center">
+                            <h5 class="card-title"><i class="fas fa-rupee-sign me-2"></i>Revenue</h5>
+                            <h2 class="stat-number">₹${totalRevenue.toLocaleString()}</h2>
+                            <p class="mb-0">Total Collected</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card dashboard-card" style="background: linear-gradient(135deg, #43e97b, #38f9d7);">
+                        <div class="card-body text-center">
+                            <h5 class="card-title"><i class="fas fa-hospital me-2"></i>Validation</h5>
+                            <h2 class="stat-number">${activeMembers}</h2>
+                            <p class="mb-0">Valid Cards</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
     } catch (error) {
-        console.error('Error creating employee:', error);
-        alert('Error creating employee: ' + error.message);
+        console.error('Error loading stats:', error);
+        document.getElementById('dashboardStats').innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger">Error loading dashboard statistics</div>
+            </div>
+        `;
     }
 }
 
-// Load employees
-async function loadEmployees() {
+async function loadRecentPayments() {
+    try {
+        const { data: payments, error } = await supabase
+            .from('payments')
+            .select('*')
+            .order('payment_date', { ascending: false })
+            .limit(10);
+            
+        if (error) throw error;
+        
+        const paymentsContainer = document.getElementById('recentPayments');
+        if (paymentsContainer) {
+            if (payments && payments.length > 0) {
+                let html = '<table class="table table-hover"><thead><tr><th>Payment ID</th><th>Member ID</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead><tbody>';
+                
+                payments.forEach(payment => {
+                    html += `
+                        <tr>
+                            <td>${payment.id}</td>
+                            <td>${payment.member_id || 'N/A'}</td>
+                            <td>₹${payment.amount || '0'}</td>
+                            <td>${new Date(payment.payment_date).toLocaleDateString()}</td>
+                            <td><span class="badge badge-success">${payment.payment_status || 'completed'}</span></td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</tbody></table>';
+                paymentsContainer.innerHTML = html;
+            } else {
+                paymentsContainer.innerHTML = '<p class="text-muted">No recent payments found</p>';
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error loading recent payments:', error);
+    }
+}
+
+// ============================================
+// 6. EMPLOYEE MANAGEMENT
+// ============================================
+
+async function loadEmployeeList() {
     try {
         const { data: employees, error } = await supabase
             .from('employees')
@@ -721,834 +514,993 @@ async function loadEmployees() {
             
         if (error) throw error;
         
-        const tbody = document.querySelector('#employeesTable tbody');
-        
-        if (!employees || employees.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">No employees found</td></tr>';
-            return;
+        const tableBody = document.querySelector('#employeesTable tbody');
+        if (tableBody) {
+            tableBody.innerHTML = '';
+            
+            if (employees && employees.length > 0) {
+                employees.forEach(emp => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${emp.employee_id || 'N/A'}</td>
+                        <td>${emp.name}</td>
+                        <td><span class="badge badge-info">${emp.role || 'employee'}</span></td>
+                        <td>${emp.phone || 'N/A'}</td>
+                        <td>${emp.email}</td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="viewEmployee(${emp.id})">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            ${window.currentRole === 'admin' ? `
+                                <button class="btn btn-sm btn-warning" onclick="editEmployee(${emp.id})">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteEmployee(${emp.id})">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            ` : ''}
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No employees found</td></tr>';
+            }
         }
-        
-        tbody.innerHTML = employees.map(emp => `
-            <tr>
-                <td>${emp.employee_id}</td>
-                <td>${emp.name}</td>
-                <td><span class="badge ${emp.role === 'admin' ? 'bg-primary' : 'bg-secondary'}">${emp.role}</span></td>
-                <td>${emp.phone}</td>
-                <td>${emp.email}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editEmployee('${emp.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteEmployee('${emp.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
         
     } catch (error) {
         console.error('Error loading employees:', error);
-        document.querySelector('#employeesTable tbody').innerHTML = '<tr><td colspan="6" class="text-center text-danger">Error loading employees</td></tr>';
+        showToast('Error loading employee list', 'error');
     }
 }
 
-// Forgot password functionality
-function showForgotPassword(e) {
-    e.preventDefault();
-    document.getElementById('loginForm').style.display = 'none';
-    document.getElementById('forgotPasswordSection').style.display = 'block';
+async function addEmployee() {
+    try {
+        const form = document.getElementById('addEmployeeForm');
+        if (!form) return;
+        
+        const formData = new FormData(form);
+        const employeeData = {
+            name: formData.get('empName'),
+            email: formData.get('empEmail'),
+            password: formData.get('empPassword'),
+            phone: formData.get('empPhone'),
+            role: formData.get('empRole'),
+            father_name: formData.get('empFatherName'),
+            date_of_birth: formData.get('empDOB'),
+            address: formData.get('empAddress'),
+            district_id: formData.get('empDistrict') || null,
+            block_id: formData.get('empBlock') || null,
+            gp_id: formData.get('empGP') || null,
+            employee_id: 'EMP' + Date.now().toString().slice(-6)
+        };
+        
+        // Insert employee
+        const { data, error } = await supabase
+            .from('employees')
+            .insert([employeeData])
+            .select();
+            
+        if (error) throw error;
+        
+        // Create auth user
+        const { error: authError } = await supabase.auth.signUp({
+            email: employeeData.email,
+            password: employeeData.password,
+            options: {
+                data: {
+                    name: employeeData.name,
+                    role: employeeData.role
+                }
+            }
+        });
+        
+        if (authError) {
+            console.warn('Auth creation warning:', authError);
+            // Continue even if auth fails - user can be created later
+        }
+        
+        // Close modal
+        $('#addEmployeeModal').modal('hide');
+        
+        // Reset form
+        resetEmployeeForm();
+        
+        // Reload employee list
+        await loadEmployeeList();
+        
+        showToast('Employee added successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error adding employee:', error);
+        showToast('Error adding employee: ' + error.message, 'error');
+    }
 }
 
-function showLoginForm(e) {
-    e.preventDefault();
-    document.getElementById('forgotPasswordSection').style.display = 'none';
-    document.getElementById('loginForm').style.display = 'block';
+function viewEmployee(id) {
+    // Navigate to employee details
+    navigateToSection('employee-details');
+    // TODO: Load specific employee details
 }
 
-async function sendPasswordReset() {
-    const email = document.getElementById('resetEmail').value;
+function editEmployee(id) {
+    // TODO: Implement edit employee
+    showToast('Edit employee - Coming soon', 'info');
+}
+
+async function deleteEmployee(id) {
+    if (!confirm('Are you sure you want to delete this employee?')) return;
     
-    if (!email) {
-        alert('Please enter your email address');
+    try {
+        const { error } = await supabase
+            .from('employees')
+            .delete()
+            .eq('id', id);
+            
+        if (error) throw error;
+        
+        await loadEmployeeList();
+        showToast('Employee deleted successfully', 'success');
+        
+    } catch (error) {
+        console.error('Error deleting employee:', error);
+        showToast('Error deleting employee', 'error');
+    }
+}
+
+// ============================================
+// 7. MEMBER MANAGEMENT
+// ============================================
+
+async function loadMemberList() {
+    try {
+        const { data: members, error } = await supabase
+            .from('members')
+            .select(`
+                *,
+                districts:district_id(name),
+                blocks:block_id(name),
+                gps:gp_id(name)
+            `)
+            .order('created_at', { ascending: false });
+            
+        if (error) throw error;
+        
+        const tableBody = document.querySelector('#membersTable tbody');
+        const searchInput = document.getElementById('memberSearch');
+        
+        if (tableBody) {
+            tableBody.innerHTML = '';
+            
+            if (members && members.length > 0) {
+                // Store members globally for search
+                window.membersList = members;
+                
+                members.forEach(member => {
+                    const row = document.createElement('tr');
+                    const statusClass = member.status === 'active' ? 'success' : 
+                                      member.status === 'expired' ? 'danger' : 'warning';
+                    
+                    row.innerHTML = `
+                        <td>${member.member_id}</td>
+                        <td>${member.name}</td>
+                        <td>${member.father_name || 'N/A'}</td>
+                        <td>${member.contact_number || 'N/A'}</td>
+                        <td>${member.districts?.name || member.district || 'N/A'}</td>
+                        <td>${new Date(member.join_date).toLocaleDateString()}</td>
+                        <td>${member.expiry_date ? new Date(member.expiry_date).toLocaleDateString() : 'N/A'}</td>
+                        <td><span class="badge badge-${statusClass}">${member.status || 'unknown'}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="viewMember('${member.member_id}')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-warning" onclick="renewMember('${member.member_id}')">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                            <button class="btn btn-sm btn-primary" onclick="generateMemberCard('${member.member_id}')">
+                                <i class="fas fa-id-card"></i>
+                            </button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="9" class="text-center">No members found</td></tr>';
+            }
+        }
+        
+        // Setup search
+        if (searchInput) {
+            searchInput.addEventListener('input', function(e) {
+                filterMemberList(e.target.value.toLowerCase());
+            });
+        }
+        
+    } catch (error) {
+        console.error('Error loading members:', error);
+        showToast('Error loading member list', 'error');
+    }
+}
+
+function filterMemberList(searchTerm) {
+    if (!window.membersList) return;
+    
+    const tableBody = document.querySelector('#membersTable tbody');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '';
+    
+    const filtered = window.membersList.filter(member => 
+        member.member_id.toLowerCase().includes(searchTerm) ||
+        member.name.toLowerCase().includes(searchTerm) ||
+        (member.father_name && member.father_name.toLowerCase().includes(searchTerm)) ||
+        (member.contact_number && member.contact_number.includes(searchTerm))
+    );
+    
+    if (filtered.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="9" class="text-center">No matching members found</td></tr>';
         return;
     }
     
-    alert('Password reset feature would be implemented here for: ' + email);
-    // In production, integrate with Supabase Auth reset
-}
-
-// Logout function
-async function handleLogout() {
-    try {
-        console.log('Logging out...');
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-
-        currentUser = null;
-        currentRole = null;
-        showLogin();
-        console.log('👋 Logged out successfully');
-    } catch (error) {
-        console.error('Error during logout:', error);
-        alert('Error during logout: ' + error.message);
-    }
-}
-
-// --- Real Edit & Delete functions for employees ---
-
-// Edit: open modal prefilled and allow update
-window.editEmployee = async function(id) {
-  try {
-    // fetch employee row by id
-    const { data: emp, error } = await supabase
-      .from('employees')
-      .select('*')
-      .eq('id', id)
-      .single();
-    if (error) throw error;
-
-    // Fill the Add/Edit Employee modal input fields (IDs must match your form)
-    document.getElementById('empName').value = emp.name || '';
-    document.getElementById('empFatherName').value = emp.father_name || '';
-    document.getElementById('empEmail').value = emp.email || '';
-    document.getElementById('empPhone').value = emp.phone || '';
-    document.getElementById('empRole').value = emp.role || 'employee';
-    document.getElementById('empAddress').value = emp.address || '';
-    // Do not prefill password for security
-    document.getElementById('empPassword').value = '';
-
-    // Show the modal (Bootstrap assumed)
-    $('#addEmployeeModal').modal('show');
-
-    // Change Save button temporarily into Update mode
-    const saveBtn = document.getElementById('saveEmployeeBtn');
-    const originalText = saveBtn.textContent;
-
-    saveBtn.textContent = 'Update Employee';
-    // remove existing onclick to avoid double-binding
-    saveBtn.onclick = null;
-
-    saveBtn.addEventListener('click', async function updateHandler () {
-      try {
-        const updated = {
-          name: document.getElementById('empName').value.trim(),
-          father_name: document.getElementById('empFatherName').value.trim(),
-          email: document.getElementById('empEmail').value.trim(),
-          phone: document.getElementById('empPhone').value.trim(),
-          role: document.getElementById('empRole').value,
-          address: document.getElementById('empAddress').value.trim()
-        };
-
-        const { error: updError } = await supabase
-          .from('employees')
-          .update(updated)
-          .eq('id', id);
-
-        if (updError) throw updError;
-
-        alert('Employee updated successfully');
-        $('#addEmployeeModal').modal('hide');
-        resetEmployeeForm(); // reset form after update
-
-        // restore Save button state
-        saveBtn.textContent = originalText;
-        saveBtn.onclick = saveEmployee;
-        saveBtn.removeEventListener('click', updateHandler);
-
-        // reload table
-        if (typeof loadEmployees === 'function') loadEmployees();
-      } catch (e) {
-        alert('Error updating employee: ' + (e.message || e));
-      }
-    }, { once: true });
-
-  } catch (e) {
-    alert('Cannot load employee: ' + (e.message || e));
-  }
-};
-
-// Delete: confirm and remove row from Supabase
-window.deleteEmployee = async function(id) {
-  try {
-    if (!confirm('Are you sure you want to delete this employee?')) return;
-
-    const { error } = await supabase
-      .from('employees')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-
-    alert('Employee deleted');
-    if (typeof loadEmployees === 'function') loadEmployees();
-  } catch (e) {
-    alert('Error deleting employee: ' + (e.message || e));
-  }
-};
-
-// ---- Full Member Registration Implementation (with Family Members) ----
-window.saveMember = async function () {
-  try {
-    // Collect main member form values
-    const name = document.getElementById('memberName').value.trim();
-    const father = document.getElementById('memberFatherName').value.trim();
-    const age = parseInt(document.getElementById('memberAge').value, 10);
-    const gender = document.getElementById('memberGender').value;
-    const aadhar = document.getElementById('memberAadhar').value.trim();
-    const contact = document.getElementById('memberContact').value.trim();
-    const alternate = document.getElementById('memberAlternate').value.trim();
-    const clinical = document.getElementById('memberClinical').value.trim();
-    const districtId = document.getElementById('memberDistrictId').value;
-    const blockId = document.getElementById('memberBlockId').value;
-    const gpId = document.getElementById('memberGPId').value;
-    const address = document.getElementById('memberAddress').value.trim();
-    const nominee = document.getElementById('memberNominee').value.trim();
-    const paymentReceived = document.getElementById('paymentReceived').checked;
-
-    // Basic validation
-    if (!name || !contact || !aadhar || !districtId || !blockId || !gpId || !address) {
-      alert('⚠️ Please fill all required fields (Name, Contact, Aadhaar, District, Block, GP, Address)');
-      return;
-    }
-
-    // ✅ Generate next member_id
-    const { data: last } = await supabase
-      .from('members')
-      .select('member_id')
-      .order('id', { ascending: false })
-      .limit(1);
-
-    let next = 101;
-    if (last && last.length > 0) {
-      const num = parseInt(last[0].member_id.replace(/\D/g, ''), 10);
-      if (!isNaN(num)) next = num + 1;
-    }
-
-    const memberId = 'GHM' + String(next).padStart(6, '0');
-
-    // 📸 Upload applicant photo (optional)
-    let applicant_url = null;
-    const applicantInput = document.getElementById('applicantPhoto');
-
-    if (applicantInput && applicantInput.files && applicantInput.files.length > 0) {
-      const file = applicantInput.files[0];
-      const filePath = `applicant-${Date.now()}-${file.name}`;
-      const { error: uploadError } = await supabase.storage
-        .from('applicant-photos')
-        .upload(filePath, file, { cacheControl: '3600', upsert: false });
-
-      if (uploadError) {
-        console.error('Error uploading applicant photo:', uploadError.message);
-        alert('Error uploading applicant photo. Please try again.');
-      } else {
-        const { data: publicUrlData } = supabase
-          .storage
-          .from('applicant-photos')
-          .getPublicUrl(filePath);
-        applicant_url = publicUrlData.publicUrl;
-      }
-    }
-
-    // ✅ Collect family member data
-    const family_members = [];
-    document.querySelectorAll('#familyBody tr').forEach((row) => {
-      const fname = row.querySelector('.fam-name')?.value.trim();
-      const fage = parseInt(row.querySelector('.fam-age')?.value.trim(), 10);
-      const frel = row.querySelector('.fam-relation')?.value;
-      if (fname && fage && frel) {
-        family_members.push({ name: fname, age: fage, relation: frel });
-      }
-    });
-
-    // Get district name for display
-    const { data: districtData } = await supabase
-      .from('districts')
-      .select('name')
-      .eq('id', districtId)
-      .single();
-
-    const districtName = districtData ? districtData.name : '';
-
-    // ✅ Insert main member data into Supabase
-    const { data, error } = await supabase.from('members').insert([
-      {
-        member_id: memberId,
-        name: name,
-        father_name: father,
-        age,
-        gender,
-        aadhar_number: aadhar,
-        contact_number: contact,
-        alternate_number: alternate,
-        clinical_history: clinical,
-        district: districtName, // for easy display
-        district_id: districtId, // foreign keys
-        block_id: blockId, // foreign keys
-        gp_id: gpId, // foreign keys
-        address: address,
-        nominee_name: nominee,
-        applicant_photo_url: applicant_url,
-        payment_received: paymentReceived,
-        family_members, // JSON array
-        join_date: new Date().toISOString(),
-        expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString(),
-        created_by: currentUser ? currentUser.name : "Admin"
-      },
-    ]);
-
-    if (error) throw error;
-
-    // ✅ ADD PAYMENT RECORD IF PAYMENT RECEIVED
-    if (paymentReceived) {
-      const { error: paymentError } = await supabase
-        .from('payments')
-        .insert([
-          {
-            member_id: memberId,
-            amount: 300, // Assuming fixed amount
-            currency: 'INR', // Assuming fixed currency
-            payment_status: 'completed',
-            collected_by: currentUser ? currentUser.name : "Admin",
-            district_name: districtName,
-            payment_date: new Date().toISOString(),
-            payment_date: new Date().toISOString().split('T')[0] // Today's date in YYYY-MM-DD format
-            
-          }]);
-
-      if (paymentError) {
-        console.error('Error recording payment:', paymentError.message);
-        alert('⚠️ Member registered but failed to record payment. Please check the payments section.');
-      }
-    }
-
-    // ✅ Success alert
-
-    alert(`✅ Member registered successfully! Member ID: ${memberId}`);
-
-    // ✅ Generate Member Card & Receipt PDF
-    if (typeof generateMemberPDF === 'function') {
-      generateMemberPDF({
-        name,
-        member_id: memberId,
-        age,
-        gender,
-        aadhar_number: aadhar,
-        contact_number: contact,
-        district: districtName,
-        join_date: new Date(),
-        expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-        created_by: currentUser ? currentUser.name : "Admin",
-        applicant_photo_url: applicant_url
-      });
-    }
-
-    // ✅ Reset and close form
-    $('#addMemberModal').modal('hide');
-    resetMemberForm();
-    loadMembers(); // Refresh members table
-    
-
-  } catch (err) {
-    console.error('Error registering member:', err);
-    alert('Error registering member: ' + err.message);
-  }
-};
-
-window.searchMembers = function() {
-    const searchTerm = document.getElementById('memberSearch').value.toLowerCase();
-    const rows = document.querySelectorAll('#membersTable tbody tr');
-    
-    rows.forEach(row => {
-        const text = row.textContent.toLowerCase();
-        row.style.display = text.includes(searchTerm) ? '' : 'none';
-    });
-};
-
-// === Load Members Table ===
-async function loadMembers() {
-  try {
-    const tbody = document.querySelector('#membersTable tbody');
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Loading...</td></tr>';
-
-    // ✅ Fetch all members
-    const { data: members, error } = await supabase
-      .from('members')
-      .select('*')
-      .order('id', { ascending: false });
-
-    if (error) throw error;
-
-    if (!members || members.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No members found</td></tr>';
-      return;
-    }
-
-    // ✅ Build rows
-    tbody.innerHTML = members.map(mem => `
-      <tr>
-        <td>${mem.member_id}</td>
-        <td>${mem.name}</td>
-        <td>${mem.father_name || ''}</td>
-        <td>${mem.contact_number}</td>
-        <td>${mem.district}</td>
-        <td>${mem.join_date ? new Date(mem.join_date).toLocaleDateString() : ''}</td>
-        <td>${mem.expiry_date ? new Date(mem.expiry_date).toLocaleDateString() : ''}</td>
-        <td>${mem.status || 'active'}</td>
-        <td>
-          <button class="btn btn-sm btn-outline-primary" onclick="editMember('${mem.id}')"><i class="fas fa-edit"></i></button>
-          <button class="btn btn-sm btn-outline-danger" onclick="deleteMember('${mem.id}')"><i class="fas fa-trash"></i></button>
-        </td>
-      </tr>
-    `).join('');
-
-  } catch (err) {
-    console.error('Error loading members:', err);
-    document.querySelector('#membersTable tbody').innerHTML =
-      '<tr><td colspan="9" class="text-center text-danger">Error loading members</td></tr>';
-  }
-}
-
-// ==============================
-// DELETE MEMBER FUNCTION
-// ==============================
-window.deleteMember = async function (id) {
-  try {
-    if (!confirm("Are you sure you want to delete this member?")) return;
-
-    const { error } = await supabase
-      .from('members')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-
-    alert("✅ Member deleted successfully!");
-    loadMembers(); // reload the table
-  } catch (err) {
-    console.error("Error deleting member:", err);
-    alert("❌ Error deleting member: " + err.message);
-  }
-};
-
-// ==============================
-// EDIT MEMBER FUNCTION
-// ==============================
-window.editMember = async function (id) {
-  try {
-    const { data: member, error } = await supabase
-      .from('members')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (error) throw error;
-
-    // Fill form fields in the edit modal
-    document.getElementById('editMemberId').value = member.id;
-    document.getElementById('editMemberName').value = member.name || '';
-    document.getElementById('editFatherName').value = member.father_name || '';
-    document.getElementById('editAge').value = member.age || '';
-    document.getElementById('editGender').value = member.gender || '';
-    document.getElementById('editAadhar').value = member.aadhar_number || '';
-    document.getElementById('editContact').value = member.contact_number || '';
-    document.getElementById('editAddress').value = member.address || '';
-    document.getElementById('editStatus').value = member.status || 'active';
-
-    // Load districts and preselect
-    await loadDistrictOptions('editDistrict', true);
-    if (member.district_id) {
-      document.getElementById('editDistrict').value = member.district_id;
-      // Load blocks for this district
-      await loadBlockOptions('editBlock', member.district_id, true);
-      if (member.block_id) {
-        document.getElementById('editBlock').value = member.block_id;
-        // Load GPs for this block
-        await loadGpOptions('editGP', member.block_id, true);
-        if (member.gp_id) {
-          document.getElementById('editGP').value = member.gp_id;
-        }
-      }
-    }
-
-    // Show the edit modal
-    $('#editMemberModal').modal('show');
-
-  } catch (err) {
-    console.error('Error loading member details:', err);
-    alert('❌ Error loading member details.');
-  }
-};
-
-// Update Member function
-document.getElementById('updateMemberBtn').addEventListener('click', async () => {
-  try {
-    const id = document.getElementById('editMemberId').value;
-
-    const updates = {
-      name: document.getElementById('editMemberName').value,
-      father_name: document.getElementById('editFatherName').value,
-      age: parseInt(document.getElementById('editAge').value),
-      gender: document.getElementById('editGender').value,
-      aadhar_number: document.getElementById('editAadhar').value,
-      contact_number: document.getElementById('editContact').value,
-      district_id: document.getElementById('editDistrict').value,
-      block_id: document.getElementById('editBlock').value,
-      gp_id: document.getElementById('editGP').value,
-      address: document.getElementById('editAddress').value,
-      status: document.getElementById('editStatus').value,
-      updated_at: new Date().toISOString()
-    };
-
-    // Get district name for display
-    if (updates.district_id) {
-      const { data: districtData } = await supabase
-        .from('districts')
-        .select('name')
-        .eq('id', updates.district_id)
-        .single();
-      
-      if (districtData) {
-        updates.district = districtData.name; // Update display name
-      }
-    }
-
-    const { error } = await supabase
-      .from('members')
-      .update(updates)
-      .eq('id', id);
-
-    if (error) throw error;
-
-    alert('✅ Member updated successfully!');
-    $('#editMemberModal').modal('hide');
-    loadMembers();
-  } catch (err) {
-    console.error('Error updating member:', err.message);
-    alert('❌ Failed to update member: ' + err.message);
-  }
-});
-
-
-// Setup edit modal cascade dropdowns
-document.getElementById('editDistrict')?.addEventListener('change', async function () {
-  const districtId = this.value;
-  await loadBlockOptions('editBlock', districtId, true);
-  document.getElementById('editGP').innerHTML = '<option value="">Select GP</option>';
-  document.getElementById('editGP').disabled = true;
-});
-
-document.getElementById('editBlock')?.addEventListener('change', async function () {
-  const blockId = this.value;
-  if (blockId) {
-    await loadGpOptions('editGP', blockId, true);
-  } else {
-    document.getElementById('editGP').innerHTML = '<option value="">Select GP</option>';
-    document.getElementById('editGP').disabled = true;
-  }
-});
-
-async function loadPayments() {
-    try {
-        let query = supabase.from('payments').select('*');
-
-        // Apply filters
-        const searchTerm = document.getElementById('paymentSearch')?.value;
-        const dateFrom = document.getElementById('paymentDateFrom')?.value;
-        const dateTo = document.getElementById('paymentDateTo')?.value;
-        const district = document.getElementById('paymentDistrict')?.value;
-
-        if (searchTerm) {
-          query = query.or(`member_id.ilike.%${searchTerm}%,collected_by.ilike.%${searchTerm}%`);
-        }
-        if (dateFrom) query = query.gte('payment_date', dateFrom);
-        if (dateTo) query = query.lte('payment_date', dateTo);
-        if (district) query = query.eq('district', district);
-
-        const { data: payments, error } = await query.order('payment_date', { ascending: false });
-
-        if (error) throw error;
-
-        const tbody = document.querySelector('#paymentsTable tbody');
+    filtered.forEach(member => {
+        const row = document.createElement('tr');
+        const statusClass = member.status === 'active' ? 'success' : 
+                          member.status === 'expired' ? 'danger' : 'warning';
         
-        if (!payments || payments.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center">No payments found</td></tr>';
-            return;
+        row.innerHTML = `
+            <td>${member.member_id}</td>
+            <td>${member.name}</td>
+            <td>${member.father_name || 'N/A'}</td>
+            <td>${member.contact_number || 'N/A'}</td>
+            <td>${member.districts?.name || member.district || 'N/A'}</td>
+            <td>${new Date(member.join_date).toLocaleDateString()}</td>
+            <td>${member.expiry_date ? new Date(member.expiry_date).toLocaleDateString() : 'N/A'}</td>
+            <td><span class="badge badge-${statusClass}">${member.status || 'unknown'}</span></td>
+            <td>
+                <button class="btn btn-sm btn-info" onclick="viewMember('${member.member_id}')">
+                    <i class="fas fa-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-warning" onclick="renewMember('${member.member_id}')">
+                    <i class="fas fa-redo"></i>
+                </button>
+                <button class="btn btn-sm btn-primary" onclick="generateMemberCard('${member.member_id}')">
+                    <i class="fas fa-id-card"></i>
+                </button>
+            </td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+async function addMember() {
+    try {
+        const form = document.getElementById('addMemberForm');
+        if (!form) return;
+        
+        // Collect family members
+        const familyMembers = [];
+        document.querySelectorAll('#familyBody tr').forEach(row => {
+            const name = row.querySelector('.fam-name').value;
+            const age = row.querySelector('.fam-age').value;
+            const relation = row.querySelector('.fam-relation').value;
+            
+            if (name && age) {
+                familyMembers.push({ name, age: parseInt(age), relation });
+            }
+        });
+        
+        const formData = new FormData(form);
+        const memberData = {
+            member_id: 'GHM' + Date.now().toString().slice(-6),
+            name: formData.get('memberName'),
+            father_name: formData.get('memberFatherName'),
+            age: parseInt(formData.get('memberAge')) || null,
+            gender: formData.get('memberGender'),
+            contact_number: formData.get('memberPhone'),
+            alternate_number: formData.get('memberAltPhone') || null,
+            aadhar_number: formData.get('memberAadhar') || null,
+            clinical_history: formData.get('memberMedicalHistory') || null,
+            nominee_name: formData.get('memberNominee') || null,
+            full_address: formData.get('memberAddress'),
+            district: formData.get('memberDistrictText') || null,
+            district_id: formData.get('memberDistrictId') || null,
+            block_id: formData.get('memberBlockId') || null,
+            gp_id: formData.get('memberGPId') || null,
+            payment_received: formData.get('paymentReceived') === 'on',
+            join_date: new Date().toISOString().split('T')[0],
+            expiry_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+            status: 'active',
+            created_by: window.currentUser?.email,
+            family_members: familyMembers
+        };
+        
+        // Handle photo upload
+        const photoFile = formData.get('memberPhoto');
+        let photoUrl = null;
+        
+        if (photoFile && photoFile.size > 0) {
+            const fileName = `member_${memberData.member_id}_${Date.now()}.${photoFile.name.split('.').pop()}`;
+            const { data: uploadData, error: uploadError } = await supabase.storage
+                .from('member-photos')
+                .upload(fileName, photoFile);
+                
+            if (!uploadError) {
+                const { data: { publicUrl } } = supabase.storage
+                    .from('member-photos')
+                    .getPublicUrl(fileName);
+                photoUrl = publicUrl;
+            }
         }
+        
+        if (photoUrl) {
+            memberData.applicant_photo_url = photoUrl;
+        }
+        
+        // Insert member
+        const { data, error } = await supabase
+            .from('members')
+            .insert([memberData])
+            .select();
+            
+        if (error) throw error;
+        
+        // Create payment record if payment received
+        if (memberData.payment_received) {
+            const paymentData = {
+                member_id: memberData.member_id,
+                amount: 300.00,
+                currency: 'INR',
+                payment_status: 'completed',
+                payment_date: new Date().toISOString().split('T')[0],
+                collected_by: window.currentUser?.email,
+                district: memberData.district
+            };
+            
+            await supabase
+                .from('payments')
+                .insert([paymentData]);
+        }
+        
+        // Close modal
+        $('#addMemberModal').modal('hide');
+        
+        // Reset form
+        resetMemberForm();
+        
+        // Reload data
+        await loadMemberList();
+        await loadDashboardData();
+        
+        showToast('Member registered successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error adding member:', error);
+        showToast('Error adding member: ' + error.message, 'error');
+    }
+}
 
-        tbody.innerHTML = payments.map(payment => `
-            <tr>
-                <td>${payment.id}</td>
-                <td>${payment.member_id || 'N/A'}</td>
-                <td>₹${payment.amount || '0.00'}</td>
-                <td>${payment.currency || 'INR'}</td>
-                <td>${payment.payment_status || 'completed'}</td>
-                <td>${new Date(payment.payment_date).toLocaleDateString()}</td>
-                <td>${payment.collected_by || 'N/A'}</td>
-            </tr>
-        `).join('');
+function viewMember(memberId) {
+    // Navigate to member view
+    navigateToSection('member-view');
+    // TODO: Load specific member details
+    showToast(`Viewing member: ${memberId}`, 'info');
+}
 
+async function renewMember(memberId) {
+    if (!confirm(`Renew membership for ${memberId}?`)) return;
+    
+    try {
+        const newExpiry = new Date(new Date().setFullYear(new Date().getFullYear() + 1))
+            .toISOString().split('T')[0];
+        
+        const { error } = await supabase
+            .from('members')
+            .update({ 
+                expiry_date: newExpiry,
+                status: 'active',
+                updated_at: new Date().toISOString()
+            })
+            .eq('member_id', memberId);
+            
+        if (error) throw error;
+        
+        await loadMemberList();
+        showToast('Membership renewed successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error renewing member:', error);
+        showToast('Error renewing membership', 'error');
+    }
+}
+
+async function generateMemberCard(memberId) {
+    try {
+        // Get member data
+        const { data: member, error } = await supabase
+            .from('members')
+            .select('*')
+            .eq('member_id', memberId)
+            .single();
+            
+        if (error) throw error;
+        
+        // Call PDF generator function if available
+        if (window.generatePDFCard) {
+            window.generatePDFCard(member);
+        } else {
+            showToast('PDF generator not available', 'warning');
+        }
+        
+    } catch (error) {
+        console.error('Error generating card:', error);
+        showToast('Error generating member card', 'error');
+    }
+}
+
+// ============================================
+// 8. PAYMENT MANAGEMENT
+// ============================================
+
+async function loadPaymentList() {
+    try {
+        const { data: payments, error } = await supabase
+            .from('payments')
+            .select('*')
+            .order('payment_date', { ascending: false });
+            
+        if (error) throw error;
+        
+        const tableBody = document.querySelector('#paymentsTable tbody');
+        if (tableBody) {
+            tableBody.innerHTML = '';
+            
+            if (payments && payments.length > 0) {
+                // Store payments for search
+                window.paymentsList = payments;
+                
+                payments.forEach(payment => {
+                    const row = document.createElement('tr');
+                    const statusClass = payment.payment_status === 'completed' ? 'success' : 
+                                      payment.payment_status === 'pending' ? 'warning' : 'danger';
+                    
+                    row.innerHTML = `
+                        <td>${payment.id}</td>
+                        <td>${payment.member_id || 'N/A'}</td>
+                        <td>₹${payment.amount || '0'}</td>
+                        <td>${payment.currency || 'INR'}</td>
+                        <td><span class="badge badge-${statusClass}">${payment.payment_status || 'unknown'}</span></td>
+                        <td>${new Date(payment.payment_date).toLocaleDateString()}</td>
+                        <td>${payment.collected_by || 'N/A'}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } else {
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No payments found</td></tr>';
+            }
+        }
+        
+        // Setup payment search
+        setupPaymentFilters();
+        
     } catch (error) {
         console.error('Error loading payments:', error);
-        document.querySelector('#paymentsTable tbody').innerHTML = 
-            '<tr><td colspan="7" class="text-center text-danger">Error loading payments</td></tr>';
+        showToast('Error loading payment list', 'error');
     }
 }
 
-async function loadReports() {
-    try {
-        // Load data for charts
-        const { data: members } = await supabase.from('members').select('*');
-        const { data: payments } = await supabase.from('payments').select('*');
-
-        // Simple stats display instead of charts for now
-        const ctx = document.getElementById('signupsChart')?.getContext('2d');
-        if (ctx) {
-          new Chart(ctx, {
-            type: 'bar',
-            data: {
-              labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-              datasets: [{
-                label: 'Monthly Signups',
-                data: [65, 59, 80, 81, 56, 55],
-                backgroundColor: '#2c7fb8'
-              }]
-            }
-          });
-        }
-    } catch (error) {
-        console.error('Error loading reports:', error);
-        document.getElementById('reportsSection').innerHTML = 
-            '<div class="alert alert-danger">Error loading reports data</div>';
+function setupPaymentFilters() {
+    const searchBtn = document.getElementById('searchPayments');
+    const resetBtn = document.getElementById('resetPayments');
+    const searchInput = document.getElementById('paymentSearch');
+    const dateFrom = document.getElementById('paymentDateFrom');
+    const dateTo = document.getElementById('paymentDateTo');
+    const districtSelect = document.getElementById('paymentDistrict');
+    
+    if (searchBtn) {
+        searchBtn.addEventListener('click', filterPayments);
+    }
+    
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (searchInput) searchInput.value = '';
+            if (dateFrom) dateFrom.value = '';
+            if (dateTo) dateTo.value = '';
+            if (districtSelect) districtSelect.value = '';
+            loadPaymentList();
+        });
     }
 }
 
-// Profile update function
-document.getElementById('profileForm')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    alert('Profile updated successfully!');
-});
-
-document.getElementById('changePasswordForm')?.addEventListener('submit', async function(e) {
-    e.preventDefault();
-    alert('Password changes requested successfully!');
-});
-
-
-// Export functions (simple CSV export)
-window.exportToExcel = async function() {
-    const { data: members } = await supabase.from('members').select('*');
-    if (!members) return;
+function filterPayments() {
+    if (!window.paymentsList) return;
     
-    const csv = [
-        ['Member ID', 'Name', 'Phone', 'District', 'Join Date', 'Status'],
-        ...members.map(m => [m.member_id, m.name, m.contact_number, m.district, m.join_date, m.status])
-    ].map(row => row.join(',')).join('\n');
+    const searchTerm = document.getElementById('paymentSearch')?.value.toLowerCase() || '';
+    const dateFrom = document.getElementById('paymentDateFrom')?.value;
+    const dateTo = document.getElementById('paymentDateTo')?.value;
+    const district = document.getElementById('paymentDistrict')?.value;
     
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'members-export.csv';
-    a.click();
-};
-
-window.exportToPDF = function() {
-    alert('PDF export would be implemented here with proper PDF library');
-};
-
-async function loadProfile() {
-    // Placeholder - implement profile loading
-    console.log('Loading profile...');
-}
-
-
-// Advanced Search Function
-document.getElementById('searchBtn')?.addEventListener('click', async function() {
-    try {
-        const memberId = document.getElementById('searchMemberId').value;
-        const name = document.getElementById('searchName').value;
-        const phone = document.getElementById('searchPhone').value;
-        const district = document.getElementById('searchDistrict').value;
-        const status = document.getElementById('searchStatus').value;
-        const dateFrom = document.getElementById('searchDateFrom').value;
-
-        let query = supabase.from('members').select('*');
-
-        if (memberId) query = query.ilike('member_id', `%${memberId}%`);
-        if (name) query = query.ilike('name', `%${name}%`);
-        if (phone) query = query.ilike('contact_number', `%${phone}%`);
-        if (district) query = query.eq('district', district);
-        if (status) query = query.eq('status', status);
-        if (dateFrom) query = query.gte('join_date', dateFrom);
-
-        const { data: members, error } = await query;
-
-        if (error) throw error;
-
-        const tbody = document.getElementById('searchResultsBody');
+    const filtered = window.paymentsList.filter(payment => {
+        let match = true;
         
-        if (!members || members.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center">No members found</td></tr>';
-            return;
+        // Search term
+        if (searchTerm) {
+            match = match && (
+                payment.id.toString().includes(searchTerm) ||
+                (payment.member_id && payment.member_id.toLowerCase().includes(searchTerm)) ||
+                (payment.collected_by && payment.collected_by.toLowerCase().includes(searchTerm))
+            );
         }
-
-        tbody.innerHTML = members.map(mem => `
-            <tr>
-                <td>${mem.member_id}</td>
-                <td>${mem.name}</td>
-                <td>${mem.father_name || ''}</td>
-                <td>${mem.contact_number}</td>
-                <td>${mem.age}</td>
-                <td>${mem.district}</td>
-                <td>${mem.join_date ? new Date(mem.join_date).toLocaleDateString() : ''}</td>
-                <td>${mem.expiry_date ? new Date(mem.expiry_date).toLocaleDateString() : ''}</td>
-                <td>${mem.status || 'active'}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editMember('${mem.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteMember('${mem.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-
-    } catch (error) {
-        console.error('Search error:', error);
-        document.getElementById('searchResultsBody').innerHTML = 
-            '<tr><td colspan="10" class="text-center text-danger">Error searching members</td></tr>';
-    }
-});
-
-// Reset Search
-document.getElementById('resetSearchBtn')?.addEventListener('click', function() {
-    document.getElementById('searchMemberId').value = '';
-    document.getElementById('searchName').value = '';
-    document.getElementById('searchPhone').value = '';
-    document.getElementById('searchDistrict').value = '';
-    document.getElementById('searchStatus').value = '';
-    document.getElementById('searchDateFrom').value = '';
-    document.getElementById('searchResultsBody').innerHTML = 
-        '<tr><td colspan="10" class="text-center text-muted">Use the search form above to find members</td></tr>';
-});
-
-// Fix missing function references
-window.validateMemberCard = async function() {
-    const cardId = document.getElementById('cardId').value.trim();
+        
+        // Date range
+        if (dateFrom) {
+            match = match && (new Date(payment.payment_date) >= new Date(dateFrom));
+        }
+        if (dateTo) {
+            match = match && (new Date(payment.payment_date) <= new Date(dateTo));
+        }
+        
+        // District
+        if (district) {
+            match = match && (payment.district === district);
+        }
+        
+        return match;
+    });
     
-    if (!cardId) {
-        alert('Please enter a Member ID');
+    const tableBody = document.querySelector('#paymentsTable tbody');
+    if (!tableBody) return;
+    
+    tableBody.innerHTML = '';
+    
+    if (filtered.length === 0) {
+        tableBody.innerHTML = '<tr><td colspan="7" class="text-center">No matching payments found</td></tr>';
         return;
     }
+    
+    filtered.forEach(payment => {
+        const row = document.createElement('tr');
+        const statusClass = payment.payment_status === 'completed' ? 'success' : 
+                          payment.payment_status === 'pending' ? 'warning' : 'danger';
+        
+        row.innerHTML = `
+            <td>${payment.id}</td>
+            <td>${payment.member_id || 'N/A'}</td>
+            <td>₹${payment.amount || '0'}</td>
+            <td>${payment.currency || 'INR'}</td>
+            <td><span class="badge badge-${statusClass}">${payment.payment_status || 'unknown'}</span></td>
+            <td>${new Date(payment.payment_date).toLocaleDateString()}</td>
+            <td>${payment.collected_by || 'N/A'}</td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
 
+// ============================================
+// 9. VALIDATION SYSTEM
+// ============================================
+
+async function validateMemberCard() {
+    const cardIdInput = document.getElementById('cardId');
+    if (!cardIdInput) return;
+    
+    const cardId = cardIdInput.value.trim();
+    if (!cardId) {
+        showToast('Please enter a Member ID', 'warning');
+        return;
+    }
+    
     try {
         const { data: member, error } = await supabase
             .from('members')
             .select('*')
             .eq('member_id', cardId)
             .single();
-
-        if (error) throw error;
-
-        const resultDiv = document.getElementById('validationResult');
-        
-        if (member) {
-            const isActive = member.status === 'active' && new Date(member.expiry_date) > new Date();
-            resultDiv.innerHTML = `
-                <div class="alert ${isActive ? 'alert-success' : 'alert-warning'}">
-                    <h5>Member Found</h5>
-                    <p><strong>Name:</strong> ${member.name}</p>
-                    <p><strong>Member ID:</strong> ${member.member_id}</p>
-                    <p><strong>Status:</strong> ${isActive ? 'Active' : 'Expired'}</p>
-                    <p><strong>Expiry Date:</strong> ${new Date(member.expiry_date).toLocaleDateString()}</p>
-                    <p><strong>District:</strong> ${member.district}</p>
-                </div>
-            `;
-        } else {
-            resultDiv.innerHTML = '<div class="alert alert-danger">Member not found</div>';
-        }
-        resultDiv.style.display = 'block';
-    } catch (error) {
-        console.error('Validation error:', error);
-        document.getElementById('validationResult').innerHTML = 
-            '<div class="alert alert-danger">Error validating member</div>';
-        document.getElementById('validationResult').style.display = 'block';
-    }
-};
-
-window.advancedSearchMembers = async function() {
-    try {
-        const memberId = document.getElementById('searchMemberId').value;
-        const name = document.getElementById('searchName').value;
-        const phone = document.getElementById('searchPhone').value;
-        const district = document.getElementById('searchDistrict').value;
-        const status = document.getElementById('searchStatus').value;
-        const dateFrom = document.getElementById('searchDateFrom').value;
-
-        let query = supabase.from('members').select('*');
-
-        if (memberId) query = query.ilike('member_id', `%${memberId}%`);
-        if (name) query = query.ilike('name', `%${name}%`);
-        if (phone) query = query.ilike('contact_number', `%${phone}%`);
-        if (district) query = query.eq('district', district);
-        if (status) query = query.eq('status', status);
-        if (dateFrom) query = query.gte('join_date', dateFrom);
-
-        const { data: members, error } = await query;
-
-        if (error) throw error;
-
-        const tbody = document.getElementById('searchResultsBody');
-        
-        if (!members || members.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center">No members found</td></tr>';
+            
+        if (error) {
+            if (error.code === 'PGRST116') {
+                showValidationResult(false, 'Member not found');
+            } else {
+                throw error;
+            }
             return;
         }
-
-        tbody.innerHTML = members.map(mem => `
-            <tr>
-                <td>${mem.member_id}</td>
-                <td>${mem.name}</td>
-                <td>${mem.father_name || ''}</td>
-                <td>${mem.contact_number}</td>
-                <td>${mem.age}</td>
-                <td>${mem.district}</td>
-                <td>${mem.join_date ? new Date(mem.join_date).toLocaleDateString() : ''}</td>
-                <td>${mem.expiry_date ? new Date(mem.expiry_date).toLocaleDateString() : ''}</td>
-                <td>${mem.status || 'active'}</td>
-                <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editMember('${mem.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="deleteMember('${mem.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
-
+        
+        // Check if membership is active
+        const today = new Date();
+        const expiryDate = new Date(member.expiry_date);
+        const isActive = member.status === 'active' && expiryDate >= today;
+        
+        showValidationResult(true, member, isActive);
+        
     } catch (error) {
-        console.error('Search error:', error);
-        document.getElementById('searchResultsBody').innerHTML = 
-            '<tr><td colspan="10" class="text-center text-danger">Error searching members</td></tr>';
+        console.error('Validation error:', error);
+        showToast('Validation error: ' + error.message, 'error');
     }
-};
+}
 
-window.resetSearch = function() {
-    document.getElementById('searchMemberId').value = '';
-    document.getElementById('searchName').value = '';
-    document.getElementById('searchPhone').value = '';
-    document.getElementById('searchDistrict').value = '';
-    document.getElementById('searchStatus').value = '';
-    document.getElementById('searchDateFrom').value = '';
-    document.getElementById('searchResultsBody').innerHTML = 
-        '<tr><td colspan="10" class="text-center text-muted">Use the search form above to find members</td></tr>';
-};
+function showValidationResult(success, data, isActive = false) {
+    const resultDiv = document.getElementById('validationResult');
+    if (!resultDiv) return;
+    
+    if (success && data) {
+        const expiryDate = new Date(data.expiry_date);
+        const daysRemaining = Math.ceil((expiryDate - new Date()) / (1000 * 60 * 60 * 24));
+        
+        resultDiv.innerHTML = `
+            <div class="card ${isActive ? 'border-success' : 'border-danger'}">
+                <div class="card-header ${isActive ? 'bg-success' : 'bg-danger'} text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-${isActive ? 'check-circle' : 'times-circle'} me-2"></i>
+                        ${isActive ? 'VALID MEMBER CARD' : 'INVALID/EXPIRED CARD'}
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            ${data.applicant_photo_url ? 
+                                `<img src="${data.applicant_photo_url}" alt="Member Photo" class="img-fluid rounded" style="max-height: 150px;">` :
+                                `<div class="text-muted">No photo available</div>`
+                            }
+                        </div>
+                        <div class="col-md-8">
+                            <table class="table table-sm">
+                                <tr><th>Member ID:</th><td>${data.member_id}</td></tr>
+                                <tr><th>Name:</th><td>${data.name}</td></tr>
+                                <tr><th>Father's Name:</th><td>${data.father_name || 'N/A'}</td></tr>
+                                <tr><th>Phone:</th><td>${data.contact_number || 'N/A'}</td></tr>
+                                <tr><th>Status:</th>
+                                    <td>
+                                        <span class="badge badge-${isActive ? 'success' : 'danger'}">
+                                            ${isActive ? 'ACTIVE' : 'INACTIVE'}
+                                        </span>
+                                    </td>
+                                </tr>
+                                <tr><th>Expiry Date:</th><td>${expiryDate.toLocaleDateString()}</td></tr>
+                                <tr><th>Days Remaining:</th>
+                                    <td>
+                                        <span class="badge ${daysRemaining > 30 ? 'badge-success' : daysRemaining > 0 ? 'badge-warning' : 'badge-danger'}">
+                                            ${daysRemaining} days
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    } else {
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                ${data || 'Validation failed'}
+            </div>
+        `;
+    }
+    
+    resultDiv.style.display = 'block';
+}
 
-// PDF Generation Function
-window.exportToPDF = function() {
-    alert('PDF export would generate report here');
-    // For now, trigger CSV export as fallback
-    exportToExcel();
+// ============================================
+// 10. PROFILE MANAGEMENT
+// ============================================
+
+function loadProfileData() {
+    if (!window.currentUserData) return;
+    
+    const user = window.currentUserData;
+    
+    // Populate form fields
+    const nameField = document.getElementById('profileName');
+    const fatherField = document.getElementById('profileFatherName');
+    const dobField = document.getElementById('profileDOB');
+    const phoneField = document.getElementById('profilePhone');
+    const emailField = document.getElementById('profileEmail');
+    const addressField = document.getElementById('profileAddress');
+    
+    if (nameField) nameField.value = user.name || '';
+    if (fatherField) fatherField.value = user.father_name || '';
+    if (dobField && user.date_of_birth) dobField.value = user.date_of_birth;
+    if (phoneField) phoneField.value = user.phone || '';
+    if (emailField) emailField.value = user.email || '';
+    if (addressField) addressField.value = user.address || '';
+}
+
+async function updateProfile() {
+    try {
+        const form = document.getElementById('profileForm');
+        if (!form || !window.currentUser) return;
+        
+        const formData = new FormData(form);
+        const updateData = {
+            name: formData.get('profileName'),
+            father_name: formData.get('profileFatherName'),
+            date_of_birth: formData.get('profileDOB') || null,
+            phone: formData.get('profilePhone'),
+            address: formData.get('profileAddress'),
+            updated_at: new Date().toISOString()
+        };
+        
+        const { error } = await supabase
+            .from('employees')
+            .update(updateData)
+            .eq('email', window.currentUser.email);
+            
+        if (error) throw error;
+        
+        // Update global user data
+        window.currentUserData = { ...window.currentUserData, ...updateData };
+        window.currentUser.name = updateData.name;
+        updateUIForRole();
+        
+        showToast('Profile updated successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error updating profile:', error);
+        showToast('Error updating profile', 'error');
+    }
+}
+
+async function changePassword() {
+    try {
+        const currentPassword = document.getElementById('currentPassword')?.value;
+        const newPassword = document.getElementById('newPassword')?.value;
+        const confirmPassword = document.getElementById('confirmPassword')?.value;
+        
+        if (!currentPassword || !newPassword || !confirmPassword) {
+            showToast('Please fill all password fields', 'warning');
+            return;
+        }
+        
+        if (newPassword !== confirmPassword) {
+            showToast('New passwords do not match', 'warning');
+            return;
+        }
+        
+        if (newPassword.length < 6) {
+            showToast('New password must be at least 6 characters', 'warning');
+            return;
+        }
+        
+        // Update password in employees table
+        const { error: updateError } = await supabase
+            .from('employees')
+            .update({ password: newPassword })
+            .eq('email', window.currentUser.email);
+            
+        if (updateError) throw updateError;
+        
+        // Update auth password
+        const { error: authError } = await supabase.auth.updateUser({
+            password: newPassword
+        });
+        
+        if (authError) {
+            console.warn('Auth password update warning:', authError);
+            // Continue even if auth update fails
+        }
+        
+        // Clear form
+        document.getElementById('changePasswordForm').reset();
+        
+        showToast('Password changed successfully!', 'success');
+        
+    } catch (error) {
+        console.error('Error changing password:', error);
+        showToast('Error changing password', 'error');
+    }
+}
+
+
+// ============================================
+// 12. EVENT LISTENERS & INITIALIZATION
+// ============================================
+
+function setupEventListeners() {
+    console.log('Setting up event listeners...');
+    
+    // Login form
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            try {
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+
+                // Show loading
+                $('#loginForm button').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Signing In...');
+                
+                if (error) throw error;
+                
+                showToast('Login successful!', 'success');
+                
+            } catch (error) {
+                console.error('Login error:', error);
+                showToast('Login failed: ' + error.message, 'error');
+            }
+        });
+    }
+    
+    // Forgot password
+    const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+    if (forgotPasswordLink) {
+        forgotPasswordLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('forgotPasswordSection').style.display = 'block';
+        });
+    }
+    
+    const backToLogin = document.getElementById('backToLogin');
+    if (backToLogin) {
+        backToLogin.addEventListener('click', function(e) {
+            e.preventDefault();
+            document.getElementById('forgotPasswordSection').style.display = 'none';
+        });
+    }
+    
+    // Send reset link
+    const sendResetLink = document.getElementById('sendResetLink');
+    if (sendResetLink) {
+        sendResetLink.addEventListener('click', async function() {
+            const email = document.getElementById('resetEmail').value;
+            
+            if (!email) {
+                showToast('Please enter your email', 'warning');
+                return;
+            }
+            
+            try {
+                const { error } = await supabase.auth.resetPasswordForEmail(email);
+                if (error) throw error;
+                
+                showToast('Password reset link sent to your email', 'success');
+                document.getElementById('forgotPasswordSection').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Reset password error:', error);
+                showToast('Error sending reset link', 'error');
+            }
+        });
+    }
+    
+    // Logout
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', async function() {
+            try {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+                
+                showToast('Logged out successfully', 'info');
+                
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        });
+    }
+    
+    
+    
+    // Add Employee
+    const saveEmployeeBtn = document.getElementById('saveEmployeeBtn');
+    if (saveEmployeeBtn) {
+        saveEmployeeBtn.addEventListener('click', addEmployee);
+    }
+    
+    // Reset Employee Form
+    const resetEmployeeFormBtn = document.getElementById('resetEmployeeFormBtn');
+    if (resetEmployeeFormBtn) {
+        resetEmployeeFormBtn.addEventListener('click', resetEmployeeForm);
+    }
+    
+    // Add Member
+    const saveMemberBtn = document.getElementById('saveMemberBtn');
+    if (saveMemberBtn) {
+        saveMemberBtn.addEventListener('click', addMember);
+    }
+    
+    // Reset Member Form
+    const resetMemberFormBtn = document.getElementById('resetMemberFormBtn');
+    if (resetMemberFormBtn) {
+        resetMemberFormBtn.addEventListener('click', resetMemberForm);
+    }
+    
+    // Validation
+    const validateBtn = document.getElementById('validateBtn');
+    if (validateBtn) {
+        validateBtn.addEventListener('click', validateMemberCard);
+    }
+    
+    // Profile forms
+    const profileForm = document.getElementById('profileForm');
+    if (profileForm) {
+        profileForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            updateProfile();
+        });
+    }
+    
+    const changePasswordForm = document.getElementById('changePasswordForm');
+    if (changePasswordForm) {
+        changePasswordForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            changePassword();
+        });
+    }
+
+}
+
+// ============================================
+// 13. MAIN INITIALIZATION
+// ============================================
+
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('Global Health System initializing...');
+    
+    // Initialize Supabase auth
+    await initializeAuth();
+    
+    // Setup all event listeners
+    setupEventListeners();
+    
+    // Initialize AdminLTE components
+    if (typeof $.fn.AdminLTE !== 'undefined') {
+        $('body').AdminLTE();
+    }
+    
+    console.log('Global Health System initialized successfully!');
+});
+
+// ============================================
+// EXPORT FUNCTIONS FOR HTML USE
+// ============================================
+
+// Make functions available globally
+window.addEmployee = addEmployee;
+window.resetEmployeeForm = resetEmployeeForm;
+window.addMember = addMember;
+window.resetMemberForm = resetMemberForm;
+window.validateMemberCard = validateMemberCard;
+window.viewMember = viewMember;
+window.renewMember = renewMember;
+window.generateMemberCard = generateMemberCard;
+window.viewEmployee = viewEmployee;
+window.editEmployee = editEmployee;
+window.deleteEmployee = deleteEmployee;
+window.updateProfile = updateProfile;
+window.changePassword = changePassword;
+
+// CSV Export helper
+window.exportToCSV = function(filename, data) {
+    if (!data || data.length === 0) {
+        showToast('No data to export', 'warning');
+        return;
+    }
+    
+    const headers = Object.keys(data[0]);
+    const csvContent = [
+        headers.join(','),
+        ...data.map(row => headers.map(header => JSON.stringify(row[header] || '')).join(','))
+    ].join('\n');
+    
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `${filename}_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast('CSV exported successfully', 'success');
 };
